@@ -1,13 +1,18 @@
-// src/main.js（临时占位场景，Task 16 会被替换为菜单）
+// src/main.js（临时接线，Task 16 会重写正式版）
 import { createEngine } from './core/engine.js';
+import { createInput } from './core/input.js';
+import { createGameScene } from './game.js';
 
-const engine = createEngine(document.getElementById('game'));
-engine.setScene({
-  update() {},
-  render(ctx) {
-    ctx.fillStyle = '#1a2418'; ctx.fillRect(0, 0, 1280, 720);
-    ctx.fillStyle = '#eee'; ctx.font = '32px sans-serif';
-    ctx.fillText('Zombie Survivor — 引擎就绪', 420, 360);
+const canvas = document.getElementById('game');
+const engine = createEngine(canvas);
+engine.setScene(createGameScene({
+  canvas,
+  input: createInput(),
+  onLevelUp: g => {
+    console.log('level up', g.player.level);
+    g.pendingLevelUps = 0;
+    g.paused = false;
   },
-});
+  onGameOver: s => console.log('game over', s),
+}));
 engine.start();
