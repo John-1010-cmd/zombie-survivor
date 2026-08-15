@@ -8,7 +8,7 @@ export function updateCamera(cam, target, mapSize, rng, dt) {
   if (cam.shakeT > 0) {
     cam.shakeT -= dt;
     const m = cam.shakeMag * Math.max(0, cam.shakeT) / 0.15;
-    cam.offX = (rng() * 2 - 1) * m;
-    cam.offY = (rng() * 2 - 1) * m;
+    cam.offX = (rng() * 2 - 1) * m || 0;
+    cam.offY = (rng() * 2 - 1) * m || 0;
   } else { cam.offX = 0; cam.offY = 0; }
 }
