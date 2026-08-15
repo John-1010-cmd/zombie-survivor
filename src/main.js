@@ -7,12 +7,14 @@ import { createGameScene } from './game.js';
 import { showMenu } from './ui/menu.js';
 import { showPause } from './ui/pause.js';
 import { showGameOver } from './ui/gameover.js';
+import { showDev } from './ui/dev.js';
 
 const canvas = document.getElementById('game');
 const menuEl = document.getElementById('menu');
 const pauseEl = document.getElementById('pause');
 const shopEl = document.getElementById('shop');
 const gameoverEl = document.getElementById('gameover');
+const devEl = document.getElementById('dev');
 
 const engine = createEngine(canvas);
 const settings = loadSettings();
@@ -22,6 +24,7 @@ let currentScene = null;
 const input = createInput({
   onItem: n => currentScene && currentScene.useItemKey(n),
   onEsc: () => currentScene && onEsc(),
+  onDev: () => currentScene && toggleDev(),
 });
 
 function hideOverlays() {
@@ -29,7 +32,8 @@ function hideOverlays() {
 }
 
 function onEsc() {
-  // 商店打开时优先关商店（game.js 内部处理）；否则弹/收暂停菜单
+  // 开发者菜单打开时优先关闭；商店打开时次之；否则暂停菜单
+  if (!devEl.classList.contains('hidden')) { closeDev(); return; }
   if (!shopEl.classList.contains('hidden')) { currentScene.togglePause(); return; }
   if (currentScene.paused) {
     pauseEl.classList.add('hidden');
@@ -54,6 +58,26 @@ function onEsc() {
       },
     });
   }
+}
+
+// 开发者菜单（迭代 04）：` 开关，打开即暂停
+function toggleDev() {
+  if (devEl.classList.contains('hidden')) {
+    currentScene.paused = true;
+    audio.play('click');
+    showDev(devEl, {
+      onCoins: n => currentScene.devAddCoins(n),
+      onSpawn: type => currentScene.devSpawnZombie(type),
+      onClose: closeDev,
+    });
+  } else {
+    closeDev();
+  }
+}
+
+function closeDev() {
+  devEl.classList.add('hidden');
+  currentScene.paused = false;
 }
 
 function startGame(mode) {

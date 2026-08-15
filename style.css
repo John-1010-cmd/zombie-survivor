@@ -41,6 +41,11 @@ button { font-size: 20px; padding: 10px 32px; cursor: pointer; }
 /* 结算 */
 #gameover h2 { color: #ffd75e; margin-bottom: 4px; }
 
+/* 开发者菜单（ui/dev.js）—— ` 键开关 */
+#dev h2 { color: #9fd0ff; margin-bottom: 8px; }
+.dev-buttons { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 520px; }
+.dev-btn { font-size: 16px; padding: 8px 20px; }
+
 /* 旧卡片样式（升级四选一，迭代 02 起不再使用，保留供回滚参考可删） */
 .cards { display: flex; gap: 16px; }
 .card { width: 180px; padding: 16px; background: #222; border: 2px solid #555;

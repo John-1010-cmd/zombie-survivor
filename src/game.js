@@ -23,6 +23,7 @@ import { MODES, TIER_DURATION } from './config/difficulty.js';
 import {
   spawnParticles, updateParticles, renderParticles,
   spawnFloater, updateFloaters, renderFloaters,
+  spawnExplosion, spawnLightning, updateEffects, renderEffects,
 } from './entities/effects.js';
 import { ZOMBIES } from './config/zombies.js';
 import { renderHud } from './systems/hud.js';
@@ -31,6 +32,7 @@ import { showShop } from './ui/shop.js';
 const MAX_PROJECTILES = 400;
 const MAX_PARTICLES = 500;
 const MAX_FLOATERS = 100;
+const MAX_EFFECTS = 100;    // 爆环/闪电特效上限（迭代 04）
 const HOLDOUT10_SEGMENT = 100;
 const MAX_TURRETS = 6;   // 场上固定火炮上限（plan §3）
 const MAX_WALL_RINGS = 2; // 场上围墙组上限
@@ -84,6 +86,7 @@ export function createGameScene(deps) {
     coinsOnGround: map.scatteredCoins.map(c => createCoin(c.x, c.y, c.value)),
     particles: [],
     floaters: [],
+    effects: [], // 爆环 / 闪电（迭代 04）
     time: 0,
     kills: 0,
     rng,
@@ -102,7 +105,21 @@ export function createGameScene(deps) {
     useItemKey,
     togglePause,
     applyEarlyTier,
+    devAddCoins,
+    devSpawnZombie,
   };
+
+  function fxExplosion(x, y, radius) {
+    if (scene.effects.length < MAX_EFFECTS)
+      spawnExplosion(scene.effects, x, y, radius, rng);
+  }
+
+  function fxChain(path) {
+    for (let i = 0; i + 1 < path.length; i++) {
+      if (scene.effects.length >= MAX_EFFECTS) break;
+      spawnLightning(scene.effects, path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, rng);
+    }
+  }
 
   function sound(id) { if (audio) audio.play(id); }
 
@@ -189,10 +206,24 @@ export function createGameScene(deps) {
       spawnFloater(scene.floaters, player.x, player.y - 30, '磁铁！', '#5ef');
     } else if (id === 'bomb') {
       explode(player.x, player.y, 350, 250, scene.zombies, z => hitZombie(z, 250), killZombie);
+      fxExplosion(player.x, player.y, 350);
       shake(10);
       sound('explosion');
       spawnFloater(scene.floaters, player.x, player.y - 30, '轰！', '#f80');
     }
+  }
+
+  // 开发者模式（迭代 04）：加银币 / 放置指定僵尸（玩家东侧 200px，当前档倍率）
+  function devAddCoins(n) {
+    scene.coins += n;
+    spawnFloater(scene.floaters, player.x, player.y - 30, '+' + n + ' 银币（开发者）', '#ffd75e');
+  }
+
+  function devSpawnZombie(type) {
+    const cfg = cfgFn(scene.time);
+    scene.zombies.push(createZombie(type, player.x + 200, player.y, cfg));
+    aliveCount++;
+    spawnFloater(scene.floaters, player.x + 200, player.y - 30, '已放置 ' + (type === 'boss' ? '守门Boss' : { normal: '普通', fast: '高速', tank: '坦克' }[type]), '#f55');
   }
 
   function togglePause() {
@@ -301,7 +332,8 @@ export function createGameScene(deps) {
     resolveProjectileHits(projectiles, hash, map.obstacles,
       killZombie,
       (z, p) => hitZombie(z, p.damage),
-      scene.zombies); // allZombies：tesla 链电/aoe 爆炸遍历用
+      scene.zombies, // allZombies：tesla 链电/aoe 爆炸遍历用
+      { onExplode: fxExplosion, onChain: fxChain }); // 弹道特效 hooks（迭代 04）
 
     for (const z of scene.zombies) {
       if (!z.alive) continue;
@@ -374,6 +406,7 @@ export function createGameScene(deps) {
     updateCamera(camera, player, MAP_SIZE, rng, dt);
     updateParticles(scene.particles, dt);
     updateFloaters(scene.floaters, dt);
+    updateEffects(scene.effects, dt);
   }
 
   function render(ctx) {
@@ -558,6 +591,7 @@ export function createGameScene(deps) {
 
     renderParticles(ctx, scene.particles);
     renderFloaters(ctx, scene.floaters);
+    renderEffects(ctx, scene.effects); // 爆环/闪电（世界空间，粒子之上）
 
     ctx.restore();
     ctx.textAlign = 'left';
