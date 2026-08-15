@@ -1,7 +1,7 @@
 // 部署物：固定火炮。纯逻辑模块，无 DOM 依赖。
-// 基值 per 迭代 03 数值裁定 §3：伤害 25 / 射速 0.5 / 弹速 350 / 射程 450 / aoe 80 / 耐久 200。
+// 基值 per 迭代 03 数值裁定 §3（2026-08-15 射程再下调）：伤害 25 / 射速 0.5 / 弹速 350 / 射程 350 / aoe 80 / 耐久 200。
 // 强化公式与 weaponStats 同乘区/加法（damage ×1.25^ / fireRate ×1.2^ / projectiles + / range ×1.2^），内部计算。
-const TURRET_BASE = { damage: 25, fireRate: 0.5, projectileSpeed: 350, range: 450, aoe: 80 };
+const TURRET_BASE = { damage: 25, fireRate: 0.5, projectileSpeed: 350, range: 350, aoe: 80 };
 
 function turretStats(t) {
   const e = t.weapon.enhance || {};

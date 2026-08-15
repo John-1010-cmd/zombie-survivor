@@ -16,9 +16,9 @@ test('createAux 结构：counts/增强四维/bodies/t', () => {
 });
 
 test('AUX_CONFIG 基值 per 契约', () => {
-  assert.deepEqual(AUX_CONFIG.drone, { name: '随行无人机', orbit: 90, damage: 6, fireRate: 2, projectileSpeed: 500, range: 300, aoe: 0 });
-  assert.deepEqual(AUX_CONFIG.gunner, { name: '随行移动火炮', follow: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 400, aoe: 60 });
-  assert.deepEqual(AUX_CONFIG.sniper, { name: '随行远程火炮', follow: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 650, aoe: 0 });
+  assert.deepEqual(AUX_CONFIG.drone, { name: '随行无人机', orbit: 90, damage: 6, fireRate: 2, projectileSpeed: 500, range: 250, aoe: 0 });
+  assert.deepEqual(AUX_CONFIG.gunner, { name: '随行移动火炮', follow: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 320, aoe: 60 });
+  assert.deepEqual(AUX_CONFIG.sniper, { name: '随行远程火炮', follow: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 500, aoe: 0 });
 });
 
 test('spawnAuxBodies 按 counts 重建：数量/顺序/weapon 结构/共享增强', () => {
@@ -93,7 +93,7 @@ test('drone 开火：cooldown 制、基础数值、死尸不触发', () => {
   const s = shots[0];
   assert.equal(s.damage, 6);
   assert.equal(s.speed, 500);
-  assert.equal(s.range, 300);
+  assert.equal(s.range, 250);
   assert.equal(s.pierce, 0);
   assert.equal(s.knockback, 60);
   assert.equal(s.aoe, 0);
@@ -112,20 +112,20 @@ test('drone 开火：cooldown 制、基础数值、死尸不触发', () => {
   assert.equal(shots.length, 2);
 });
 
-test('gunner/sniper 开火：aoe 60 / 长射程 650', () => {
+test('gunner/sniper 开火：aoe 60 / 长射程 500', () => {
   const aux = createAux();
   aux.counts.gunner = 1;
   aux.counts.sniper = 1;
   spawnAuxBodies(aux);
   const player = { x: 0, y: 0, facing: 0 };
   const shots = [];
-  const z = { x: 500, y: 0, alive: true };
-  // 首帧：gunner 在 (0,0)（d=500 > 400 不开火）；sniper 在 (0,0)（d=500 < 650 开火）
+  const z = { x: 450, y: 0, alive: true };
+  // 首帧：gunner 在 (0,0)（d=450 > 320 不开火）；sniper 在 (0,0)（d=450 < 500 开火）
   updateAuxBodies(aux, player, [z], s => shots.push(s), rng, 0.016);
   assert.equal(shots.length, 1);
   assert.equal(shots[0].damage, 30);
   assert.equal(shots[0].speed, 700);
-  assert.equal(shots[0].range, 650);
+  assert.equal(shots[0].range, 500);
   assert.equal(shots[0].aoe, 0);
   assert.equal(aux.bodies[0].weapon.cooldown, 0); // gunner 未开火
   // gunner 射程内 → aoe 60、伤害 15
@@ -135,7 +135,7 @@ test('gunner/sniper 开火：aoe 60 / 长射程 650', () => {
   assert.equal(shots2.length, 1);
   assert.equal(shots2[0].aoe, 60);
   assert.equal(shots2[0].damage, 15);
-  assert.equal(shots2[0].range, 400);
+  assert.equal(shots2[0].range, 320);
   assert.equal(shots2[0].speed, 400);
   assert.equal(shots2[0].knockback, 60);
   assert.ok(Math.abs(aux.bodies[0].weapon.cooldown - 1) < 1e-9);
@@ -156,7 +156,7 @@ test('aux 强化：per-type 乘区/加法公式，已部署载体吃后续强化
   assert.equal(shots.length, 2); // projectiles 1+1
   for (const s of shots) {
     assert.equal(s.damage, 6 * 1.25 ** 2);
-    assert.equal(s.range, 300 * 1.2);
+    assert.equal(s.range, 250 * 1.2);
     assert.equal(s.aoe, 0);
   }
   assert.ok(Math.abs(aux.bodies[0].weapon.cooldown - 1 / (2 * 1.2)) < 1e-9);
@@ -175,7 +175,7 @@ test('auxStats 公式独立可用', () => {
   assert.equal(s.damage, 30);
   assert.equal(s.fireRate, 0.4);
   assert.equal(s.projectiles, 1);
-  assert.equal(s.range, 650);
+  assert.equal(s.range, 500);
   assert.equal(s.projectileSpeed, 700);
   assert.equal(s.aoe, 0);
   aux.enhance.sniper.projectiles = 2;

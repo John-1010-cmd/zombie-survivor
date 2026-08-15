@@ -5,6 +5,7 @@ import { WEAPONS, STAT_LABEL, ENHANCE_STATS, STAT_MAX } from '../config/weapons.
 import { ITEMS } from '../config/items.js';
 import { AUX_CONFIG } from '../entities/companions.js';
 import { AUX_MAX } from '../config/economy.js';
+import { catalogFor } from '../systems/shop.js';
 
 // 条目 → {title, desc, price}（earlyTier 无 price）
 function entryView(entry, game) {

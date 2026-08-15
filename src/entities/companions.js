@@ -2,9 +2,9 @@
 // 基值 per 迭代 03 数值裁定 §4；强化 per-type 分维，公式与 weaponStats 同乘区/加法
 // （damage ×1.25^ / fireRate ×1.2^ / projectiles + / range ×1.2^）。
 export const AUX_CONFIG = {
-  drone: { name: '随行无人机', orbit: 90, damage: 6, fireRate: 2, projectileSpeed: 500, range: 300, aoe: 0 },
-  gunner: { name: '随行移动火炮', follow: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 400, aoe: 60 },
-  sniper: { name: '随行远程火炮', follow: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 650, aoe: 0 },
+  drone: { name: '随行无人机', orbit: 90, damage: 6, fireRate: 2, projectileSpeed: 500, range: 250, aoe: 0 },
+  gunner: { name: '随行移动火炮', follow: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 320, aoe: 60 },
+  sniper: { name: '随行远程火炮', follow: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 500, aoe: 0 },
 };
 
 export function createAux() {

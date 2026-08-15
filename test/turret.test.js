@@ -18,7 +18,7 @@ test('createTurret 字段：位置/半径/耐久 200/alive/weapon', () => {
   assert.equal(t.weapon.cooldown, 0);
 });
 
-test('射程内僵尸触发开火：基础 25/0.5/350/450、aoe 80、pierce 0', () => {
+test('射程内僵尸触发开火：基础 25/0.5/350/350、aoe 80、pierce 0', () => {
   const t = createTurret(0, 0, { damage: 0, fireRate: 0, projectiles: 0, range: 0 });
   const shots = [];
   updateTurret(t, [{ x: 100, y: 0, alive: true }], s => shots.push(s), rng, 0.016);
@@ -29,7 +29,7 @@ test('射程内僵尸触发开火：基础 25/0.5/350/450、aoe 80、pierce 0', 
   assert.equal(s.angle, 0); // 目标正东
   assert.equal(s.damage, 25);
   assert.equal(s.speed, 350);
-  assert.equal(s.range, 450);
+  assert.equal(s.range, 350);
   assert.equal(s.pierce, 0);
   assert.equal(s.aoe, 80);
 });
@@ -59,13 +59,13 @@ test('射程外与死尸不开火', () => {
 test('enhance 生效：乘区/加法同 weaponStats 公式；共享引用', () => {
   const e = { damage: 2, fireRate: 1, projectiles: 2, range: 1 };
   const t = createTurret(0, 0, e);
-  const z = { x: 500, y: 0, alive: true }; // 基础射程 450 外，强化 range=1 → 540 内
+  const z = { x: 400, y: 0, alive: true }; // 基础射程 350 外，强化 range=1 → 420 内
   const shots = [];
   updateTurret(t, [z], s => shots.push(s), rng, 0.016);
   assert.equal(shots.length, 3); // projectiles 1+2
   for (const s of shots) {
     assert.equal(s.damage, 25 * 1.25 ** 2);
-    assert.equal(s.range, 450 * 1.2);
+    assert.equal(s.range, 350 * 1.2);
     assert.equal(s.speed, 350);
     assert.equal(s.aoe, 80);
   }

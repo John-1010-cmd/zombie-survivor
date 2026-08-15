@@ -6,14 +6,14 @@ import { createWeapon, weaponStats, applyEnhancement, updateWeapon } from '../sr
 import { WEAPONS, WEAPON_MAX_LEVEL, STAT_MAX, WEAPON_BASE_PRICE } from '../src/config/weapons.js';
 
 test('射程内无僵尸不开火，无冷却', () => {
-  const w = createWeapon('pistol'); // range 420
+  const w = createWeapon('pistol'); // range 300
   const owner = { x: 0, y: 0 };
   const shots = [];
   const rng = mulberry32(1);
   updateWeapon(w, owner, [], s => shots.push(s), rng, 0.016);
   assert.equal(shots.length, 0);
   assert.equal(w.cooldown, 0);
-  // 僵尸在射程外同样不开火（新射程 420，450 已在圈外）
+  // 僵尸在射程外同样不开火（新射程 300，450 已在圈外）
   updateWeapon(w, owner, [{ x: 450, y: 0, alive: true }], s => shots.push(s), rng, 0.016);
   assert.equal(shots.length, 0);
 });
@@ -72,7 +72,7 @@ test('applyEnhancement 后 weaponStats 数值正确', () => {
   assert.equal(s.damage, 12 * 1.25);
   assert.equal(s.fireRate, 2 * 1.2);
   assert.equal(s.projectiles, 2);
-  assert.equal(s.range, 420 * 1.2);
+  assert.equal(s.range, 300 * 1.2);
   assert.equal(s.projectileSpeed, 500);
   assert.equal(s.spread, 0);
   assert.equal(s.pierce, 0);
@@ -101,19 +101,19 @@ test('单维达 STAT_MAX 后 applyEnhancement 忽略，其他维仍可强化', (
   applyEnhancement(w, 'range'); // 其他维不受影响
   assert.equal(w.enhance.range, 1);
   assert.equal(w.enhance.fireRate, 0);
-  assert.equal(weaponStats(w).range, 420 * 1.2);
+  assert.equal(weaponStats(w).range, 300 * 1.2);
 });
 
 test('六武器表：schema 齐全且数值与裁定一致（含新字段与射程下调）', () => {
   const ids = ['pistol', 'rifle', 'mg', 'rocket', 'grenade', 'tesla'];
   assert.deepEqual(Object.keys(WEAPONS).sort(), [...ids].sort());
   const expect = {
-    pistol:  { damage: 12, fireRate: 2.0, projectileSpeed: 500, range: 420, aoe: 0,   arc: false, chain: 0 },
-    rifle:   { damage: 9,  fireRate: 1.4, projectileSpeed: 600, range: 450, aoe: 0,   arc: false, chain: 0 },
-    mg:      { damage: 5,  fireRate: 8,   projectileSpeed: 550, range: 400, aoe: 0,   arc: false, chain: 0 },
-    rocket:  { damage: 30, fireRate: 0.7, projectileSpeed: 350, range: 480, aoe: 90,  arc: false, chain: 0 },
-    grenade: { damage: 25, fireRate: 0.6, projectileSpeed: 420, range: 440, aoe: 130, arc: true,  chain: 0 },
-    tesla:   { damage: 14, fireRate: 1.2, projectileSpeed: 800, range: 380, aoe: 0,   arc: false, chain: 3 },
+    pistol:  { damage: 12, fireRate: 2.0, projectileSpeed: 500, range: 300, aoe: 0,   arc: false, chain: 0 },
+    rifle:   { damage: 9,  fireRate: 1.4, projectileSpeed: 600, range: 320, aoe: 0,   arc: false, chain: 0 },
+    mg:      { damage: 5,  fireRate: 8,   projectileSpeed: 550, range: 280, aoe: 0,   arc: false, chain: 0 },
+    rocket:  { damage: 30, fireRate: 0.7, projectileSpeed: 350, range: 350, aoe: 90,  arc: false, chain: 0 },
+    grenade: { damage: 25, fireRate: 0.6, projectileSpeed: 420, range: 330, aoe: 130, arc: true,  chain: 0 },
+    tesla:   { damage: 14, fireRate: 1.2, projectileSpeed: 800, range: 260, aoe: 0,   arc: false, chain: 3 },
   };
   for (const id of ids) {
     const c = WEAPONS[id];
@@ -192,7 +192,7 @@ test('enhance.projectiles=2 时一次开火产生 3 发扇形弹道', () => {
     assert.equal(s.y, 0);
     assert.equal(s.speed, 500);
     assert.equal(s.damage, 12);
-    assert.equal(s.range, 420);
+    assert.equal(s.range, 300);
     assert.equal(s.pierce, 0);
     assert.equal(s.knockback, 120);
     assert.equal(s.aoe, 0);
