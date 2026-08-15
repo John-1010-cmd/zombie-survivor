@@ -298,3 +298,87 @@ test('aoe+chain 弹：爆炸与链电并存结算，命中即消亡（不穿透�
   assert.equal(p.alive, false); // 命中即消亡
   assert.equal(p.pierce, 5);    // aoe/chain 弹不消耗穿透
 });
+
+// ---------- 迭代04：特效 hooks（opts.onExplode / opts.onChain）----------
+
+test('aoe 命中触发 onExplode(x, y, radius)', () => {
+  const main = createZombie('normal', 1005, 1000, T1);
+  const near = createZombie('normal', 1070, 1000, T1);
+  const hash = createSpatialHash();
+  hash.insert(main); hash.insert(near);
+  const p = makeProjectile({ damage: 10, aoe: 90 });
+  let explodeArgs = null;
+  resolveProjectileHits([p], hash, [], () => {}, () => {},
+    [main, near], { onExplode: (x, y, r) => { explodeArgs = [x, y, r]; } });
+  assert.deepEqual(explodeArgs, [1000, 1000, 90]); // 弹道当前位置 + aoe 半径
+  assert.equal(p.alive, false);
+});
+
+test('aoe 弹未命中任何僵尸时不触发 onExplode', () => {
+  const hash = createSpatialHash();
+  const p = makeProjectile({ damage: 10, aoe: 90 });
+  let exploded = false;
+  resolveProjectileHits([p], hash, [], () => {}, () => {},
+    [], { onExplode: () => { exploded = true; } });
+  assert.equal(exploded, false);
+  assert.equal(p.alive, true); // 无命中则弹道继续存活
+});
+
+test('chain 命中触发 onChain，path 首点=主目标、长度=1+实际跳数', () => {
+  const z0 = createZombie('normal', 1005, 1000, T1);
+  const z1 = createZombie('normal', 1015, 1000, T1);
+  const z2 = createZombie('normal', 1025, 1000, T1);
+  const hash = createSpatialHash();
+  for (const z of [z0, z1, z2]) hash.insert(z);
+  const p = makeProjectile({ damage: 10, chain: 3 }); // 只够跳 2 次（无第 3 目标）
+  let path = null;
+  resolveProjectileHits([p], hash, [], () => {}, () => {},
+    [z0, z1, z2], { onChain: (pt) => { path = pt; } });
+  assert.ok(path, 'onChain 应被触发');
+  assert.deepEqual(path[0], { x: 1005, y: 1000 }); // 首点=主目标坐标
+  assert.equal(path.length, 3); // 1 主目标 + 2 实际跳
+  assert.deepEqual(path[1], { x: 1015, y: 1000 });
+  assert.deepEqual(path[2], { x: 1025, y: 1000 });
+});
+
+test('chain 无跳转目标时 path 仅含主目标', () => {
+  const z0 = createZombie('normal', 1005, 1000, T1);
+  const hash = createSpatialHash();
+  hash.insert(z0);
+  const p = makeProjectile({ damage: 10, chain: 3 });
+  let path = null;
+  resolveProjectileHits([p], hash, [], () => {}, () => {},
+    [z0], { onChain: (pt) => { path = pt; } });
+  assert.deepEqual(path, [{ x: 1005, y: 1000 }]);
+});
+
+test('普通弹：传入 opts 时 onExplode/onChain 均不触发', () => {
+  const z = createZombie('normal', 1005, 1000, T1);
+  const hash = createSpatialHash();
+  hash.insert(z);
+  const p = makeProjectile({ damage: 10 });
+  let exploded = false, chained = false;
+  resolveProjectileHits([p], hash, [], () => {}, () => {},
+    [z], { onExplode: () => { exploded = true; }, onChain: () => { chained = true; } });
+  assert.equal(exploded, false);
+  assert.equal(chained, false);
+  assert.equal(z.hp, 20); // 普通命中结算不受影响
+  assert.equal(p.alive, false);
+});
+
+test('不传 opts：aoe 与 chain 弹正常结算、不报错', () => {
+  const z0 = createZombie('normal', 1005, 1000, T1);
+  const z1 = createZombie('normal', 1015, 1000, T1);
+  const hash = createSpatialHash();
+  hash.insert(z0); hash.insert(z1);
+  const pa = makeProjectile({ damage: 10, aoe: 90 });
+  resolveProjectileHits([pa], hash, [], () => {}, () => {}, [z0, z1]);
+  assert.equal(z0.hp, 20);
+  assert.equal(z1.hp, 20);
+  const pc = makeProjectile({ damage: 10, chain: 1 });
+  resolveProjectileHits([pc], hash, [], () => {}, () => {}, [z0, z1]);
+  assert.equal(z0.hp, 10);
+  assert.ok(Math.abs(z1.hp - (20 - 10 * Math.pow(0.8, 1))) < 1e-9);
+  assert.equal(pa.alive, false);
+  assert.equal(pc.alive, false);
+});

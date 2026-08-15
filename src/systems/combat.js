@@ -15,7 +15,7 @@ export function explode(x, y, radius, damage, zombies, onHit, onKill, skip = nul
   }
 }
 
-export function resolveProjectileHits(projectiles, hash, obstacles, onKill, onHit, allZombies = null) {
+export function resolveProjectileHits(projectiles, hash, obstacles, onKill, onHit, allZombies = null, opts = {}) {
   for (const p of projectiles) {
     if (!p.alive) continue;
     // 1) 障碍检测：弹道视为 r=4 的圆；arc 弹（榴弹抛射）无视障碍
@@ -41,11 +41,13 @@ export function resolveProjectileHits(projectiles, hash, obstacles, onKill, onHi
         const pool = allZombies || hash.query(p.x, p.y, p.aoe + MAX_ZOMBIE_R);
         explode(p.x, p.y, p.aoe, p.damage, pool,
           hz => onHit(hz, p), hz => onKill(hz), z);
+        opts.onExplode?.(p.x, p.y, p.aoe);
       }
       // 4) chain（磁电）：自主目标起向 300px 内最近未链僵尸逐跳，伤害 ×0.8^i
       if (p.chain > 0) {
         const pool = allZombies || hash.query(p.x, p.y, 300 + MAX_ZOMBIE_R);
         const chained = new Set([z]);
+        const path = [{ x: z.x, y: z.y }]; // 特效链路：主目标起逐跳
         let cur = z;
         for (let i = 1; i <= p.chain; i++) {
           let next = null, nextD = 300;
@@ -56,12 +58,14 @@ export function resolveProjectileHits(projectiles, hash, obstacles, onKill, onHi
           }
           if (!next) break;
           chained.add(next);
+          path.push({ x: next.x, y: next.y });
           const died2 = damageZombie(next, p.damage * Math.pow(0.8, i), p.knockback,
             Math.atan2(next.y - cur.y, next.x - cur.x));
           onHit(next, p);
           if (died2) onKill(next);
           cur = next;
         }
+        opts.onChain?.(path);
       }
       // 5) aoe/chain 弹不穿透：命中即消亡；常规弹按 pierce 决定是否继续
       if (p.aoe > 0 || p.chain > 0) { p.alive = false; break; }
