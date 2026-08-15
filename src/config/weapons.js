@@ -18,6 +18,12 @@ export const WEAPON_MAX_LEVEL = 8; // 兼容既有引用（数值同 STAT_MAX）
 export const ENHANCE_STATS = ['damage', 'fireRate', 'projectiles', 'range'];
 export const STAT_LABEL = {
   damage: '伤害 +25%', fireRate: '攻速 +20%', projectiles: '弹道 +1', range: '攻击范围 +20%',
+  fragCount: '榴弹碎片 +2', fragDamage: '二次伤害 +15%', chainLen: '链路长度 +1', chainDmg: '二次伤害 +5%',
+};
+// 专属强化维（仅对应武器展示，不进通用四维；商店按武器 id 追加）
+export const SPECIAL_STATS = {
+  grenade: ['fragCount', 'fragDamage'],
+  tesla: ['chainLen', 'chainDmg'],
 };
 // 商店基价（换枪价 = round5(base × 1.4^weaponBought)，见 config/economy.js weaponPrice）
 export const WEAPON_BASE_PRICE = { pistol: 40, rifle: 80, mg: 80, rocket: 150, grenade: 200, tesla: 250 };

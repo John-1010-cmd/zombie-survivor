@@ -42,10 +42,14 @@ export function resolveProjectileHits(projectiles, hash, obstacles, onKill, onHi
         explode(p.x, p.y, p.aoe, p.damage, pool,
           hz => onHit(hz, p), hz => onKill(hz), z);
         opts.onExplode?.(p.x, p.y, p.aoe);
+        // 榴弹二次爆炸：aoe 结算后若带 frags → 交 game.js 生成碎片弹
+        if (p.frags) opts.onFrag?.(p.x, p.y, p.frags);
       }
-      // 4) chain（磁电）：自主目标起向 300px 内最近未链僵尸逐跳，伤害 ×0.8^i
+      // 4) chain（磁电）：自主目标起向 300px 内最近未链僵尸逐跳，伤害 ×chainMult^i×chainDmgMult
       if (p.chain > 0) {
         const pool = allZombies || hash.query(p.x, p.y, 300 + MAX_ZOMBIE_R);
+        const chainMult = p.chainMult ?? 0.8;   // 弹未显式携带时按默认 0.8
+        const chainDmgMult = p.chainDmgMult ?? 1;
         const chained = new Set([z]);
         const path = [{ x: z.x, y: z.y }]; // 特效链路：主目标起逐跳
         let cur = z;
@@ -59,7 +63,7 @@ export function resolveProjectileHits(projectiles, hash, obstacles, onKill, onHi
           if (!next) break;
           chained.add(next);
           path.push({ x: next.x, y: next.y });
-          const died2 = damageZombie(next, p.damage * Math.pow(0.8, i), p.knockback,
+          const died2 = damageZombie(next, p.damage * Math.pow(chainMult, i) * chainDmgMult, p.knockback,
             Math.atan2(next.y - cur.y, next.x - cur.x));
           onHit(next, p);
           if (died2) onKill(next);

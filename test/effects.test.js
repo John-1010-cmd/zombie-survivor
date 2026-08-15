@@ -67,12 +67,19 @@ test('floater 随时间上浮（y 减小）且最终移除', () => {
 
 // ---------- 迭代04：弹道特效 ----------
 
-test('spawnExplosion：环对象字段正确 + 16 个橙色粒子', () => {
+test('spawnExplosion：环对象字段正确 + 16 个橙色粒子（迭代 05：r0/r1 抖动 ±6、phase）', () => {
   const arr = [];
   spawnExplosion(arr, 300, 200, 90, mulberry32(7));
   assert.equal(arr.length, 17); // 1 环 + 16 粒子
-  assert.deepEqual(arr[0],
-    { type: 'ring', x: 300, y: 200, r0: 12, r1: 90, life: 0.25, maxLife: 0.25 });
+  const ring = arr[0];
+  assert.equal(ring.type, 'ring');
+  assert.equal(ring.x, 300);
+  assert.equal(ring.y, 200);
+  assert.equal(ring.life, 0.25);
+  assert.equal(ring.maxLife, 0.25);
+  assert.ok(ring.r0 >= 12 - 6 && ring.r0 <= 12 + 6, `r0=${ring.r0}`);
+  assert.ok(ring.r1 >= 90 - 6 && ring.r1 <= 90 + 6, `r1=${ring.r1}`);
+  assert.ok(ring.phase >= 0 && ring.phase < Math.PI * 2, `phase=${ring.phase}`);
   const particles = arr.slice(1);
   assert.equal(particles.length, 16);
   for (const p of particles) {

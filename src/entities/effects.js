@@ -48,7 +48,9 @@ export function updateFloaters(arr, dt) {
 
 // 爆炸：扩张描边圆（r0→r1）+ 16 个橙色粒子（复用 spawnParticles）。
 export function spawnExplosion(arr, x, y, radius, rng) {
-  arr.push({ type: 'ring', x, y, r0: 12, r1: radius, life: 0.25, maxLife: 0.25 });
+  // 迭代 05：r0/r1 ±6px 抖动 + 旋转相位，同位置多环错开可见（特效随弹道数叠加）
+  const j = () => (rng() * 2 - 1) * 6;
+  arr.push({ type: 'ring', x, y, r0: 12 + j(), r1: radius + j(), life: 0.25, maxLife: 0.25, phase: rng() * Math.PI * 2 });
   spawnParticles(arr, x, y, '#f80', 16, rng);
 }
 
@@ -109,7 +111,7 @@ export function renderEffects(ctx, arr) {
       ctx.strokeStyle = '#f80';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(e.x, e.y, e.r0 + (e.r1 - e.r0) * (1 - t), 0, Math.PI * 2);
+      ctx.arc(e.x, e.y, e.r0 + (e.r1 - e.r0) * (1 - t), (e.phase || 0), (e.phase || 0) + Math.PI * 2);
       ctx.stroke();
     } else if (e.type === 'bolt') {
       ctx.globalAlpha = t;

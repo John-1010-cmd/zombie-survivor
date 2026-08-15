@@ -5,18 +5,20 @@ export function createWeapon(id) {
   return {
     id,
     spent: 0, // 该武器累计已花费的强化银币（换枪时全额返还）
-    enhance: { damage: 0, fireRate: 0, projectiles: 0, range: 0 },
+    enhance: { damage: 0, fireRate: 0, projectiles: 0, range: 0,
+      fragCount: 0, fragDamage: 0, chainLen: 0, chainDmg: 0 },
     cooldown: 0, burstLeft: 0, burstTimer: 0, aimAngle: 0,
   };
 }
 
 export function weaponStats(w) {
   const c = WEAPONS[w.id];
+  const e = w.enhance;
   return {
-    damage: c.damage * Math.pow(1.25, w.enhance.damage),
-    fireRate: c.fireRate * Math.pow(1.2, w.enhance.fireRate),
-    projectiles: c.projectiles + w.enhance.projectiles,
-    range: c.range * Math.pow(1.2, w.enhance.range),
+    damage: c.damage * Math.pow(1.25, e.damage),
+    fireRate: c.fireRate * Math.pow(1.2, e.fireRate),
+    projectiles: c.projectiles + e.projectiles,
+    range: c.range * Math.pow(1.2, e.range),
     projectileSpeed: c.projectileSpeed,
     spread: c.spread,
     pierce: c.pierce,
@@ -26,11 +28,17 @@ export function weaponStats(w) {
     knockback: c.knockback,
     burst: c.burst,
     burstInterval: c.burstInterval,
+    // 专属维派生（|| 0 兜底：旧存档/炮台 enhance 可能只有四维）
+    fragCount: 8 + 2 * (e.fragCount || 0),        // 榴弹碎片：8 → 8+2n，上限 24
+    fragDmgMult: 0.4 * Math.pow(1.15, e.fragDamage || 0), // 碎片伤害 = 主伤 × 0.4×1.15^n
+    chainLen: 3 + (e.chainLen || 0),              // 链路：3 → 3+n，上限 11
+    chainDmgMult: 1 + 0.05 * (e.chainDmg || 0),   // 每跳链伤乘区
   };
 }
 
-// per-stat 强化：每维独立上限 STAT_MAX（0–8），满维忽略
+// per-stat 强化：每维独立上限 STAT_MAX（0–8），满维忽略；未知 stat 忽略
 export function applyEnhancement(w, stat) {
+  if (!(stat in w.enhance)) return;
   if (w.enhance[stat] >= STAT_MAX) return;
   w.enhance[stat] += 1;
 }
@@ -51,7 +59,7 @@ function fire(w, owner, target, stats, spawnProjectile, rng) {
   for (let i = 0; i < n; i++) {
     const fan = (i - (n - 1) / 2) * 0.12;
     const jitter = (rng() * 2 - 1) * stats.spread * Math.PI / 180;
-    spawnProjectile({
+    const opts = {
       x: owner.x, y: owner.y,
       angle: w.aimAngle + fan + jitter,
       speed: stats.projectileSpeed,
@@ -62,7 +70,16 @@ function fire(w, owner, target, stats, spawnProjectile, rng) {
       aoe: stats.aoe,
       arc: stats.arc,
       chain: stats.chain,
-    });
+    };
+    // 专属弹道：榴弹带 frags（二次爆炸参数），磁电带链增强乘区
+    if (w.id === 'grenade') {
+      opts.frags = { count: stats.fragCount, dmg: stats.damage * stats.fragDmgMult };
+    } else if (w.id === 'tesla') {
+      opts.chain = stats.chainLen;
+      opts.chainMult = 0.8;
+      opts.chainDmgMult = stats.chainDmgMult;
+    }
+    spawnProjectile(opts);
   }
 }
 

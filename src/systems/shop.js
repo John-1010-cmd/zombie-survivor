@@ -1,6 +1,6 @@
 // src/systems/shop.js —— 商店目录生成与购买逻辑。纯逻辑，无 DOM 依赖。
 // 分组目录（plan §6）：武器强化 / 更换武器 / 辅助武器 / 辅助强化 / 道具 / 风险
-import { ENHANCE_STATS, STAT_MAX } from '../config/weapons.js';
+import { ENHANCE_STATS, STAT_MAX, SPECIAL_STATS } from '../config/weapons.js';
 import { ITEM_IDS } from '../config/items.js';
 import {
   ITEM_PRICES, DEPLOY_PRICES, AUX_PRICES, AUX_MAX,
@@ -16,10 +16,11 @@ const TURRET_STATS = ['damage', 'fireRate', 'projectiles', 'range'];
 export function catalogFor(game, tierRemainingSec) {
   const w = game.weapon;
 
-  // 武器强化：四维独立计价（按该维已购次数），单维满 STAT_MAX 下架
+  // 武器强化：四维独立计价 + 当前武器的专属维（迭代 05：榴弹碎片/二次伤害、磁电链路/链伤），仅对应武器展示
   const weaponEnhance = [];
-  for (const stat of ENHANCE_STATS) {
-    const owned = w.enhance[stat];
+  const stats = [...ENHANCE_STATS, ...(SPECIAL_STATS[w.id] || [])];
+  for (const stat of stats) {
+    const owned = w.enhance[stat] ?? 0;
     if (owned >= STAT_MAX) continue;
     weaponEnhance.push({ kind: 'enhance', stat, price: enhancePrice(owned), owned });
   }

@@ -17,7 +17,8 @@ import { createInventory, addItem, useItem } from './systems/inventory.js';
 import { catalogFor, buy } from './systems/shop.js';
 import { createAux, spawnAuxBodies, updateAuxBodies } from './entities/companions.js';
 import { createTurret, updateTurret } from './entities/turret.js';
-import { createWallRing } from './entities/wall.js';
+import { createTeslaBall, updateTeslaBall } from './entities/teslaball.js';
+import { createWallSegment } from './entities/wall.js';
 import { ITEMS } from './config/items.js';
 import { MODES, TIER_DURATION } from './config/difficulty.js';
 import {
@@ -32,10 +33,10 @@ import { showShop } from './ui/shop.js';
 const MAX_PROJECTILES = 400;
 const MAX_PARTICLES = 500;
 const MAX_FLOATERS = 100;
-const MAX_EFFECTS = 100;    // 爆环/闪电特效上限（迭代 04）
+const MAX_EFFECTS = 200;    // 爆环/闪电特效上限（迭代 05：随弹道叠加）
 const HOLDOUT10_SEGMENT = 100;
 const MAX_TURRETS = 6;   // 场上固定火炮上限（plan §3）
-const MAX_WALL_RINGS = 2; // 场上围墙组上限
+const MAX_WALL_SEGMENTS = 16; // 场上围墙单段上限（迭代 05）
 const ITEM_DROP_TABLE = [
   { id: 'medkit', chance: 0.005 },
   { id: 'magnet', chance: 0.003 },
@@ -87,6 +88,7 @@ export function createGameScene(deps) {
     particles: [],
     floaters: [],
     effects: [], // 爆环 / 闪电（迭代 04）
+    teslaBalls: [], // 电磁球（迭代 05）
     time: 0,
     kills: 0,
     rng,
@@ -101,7 +103,7 @@ export function createGameScene(deps) {
     wallEnhance: { hp: 0 },
     // 部署物运行时
     turrets: [],            // 固定火炮（≤6）
-    walls: [],              // 围墙组数组的数组（≤2 组，每组 8 段）
+    walls: [],              // 围墙单段数组（≤16 段，迭代 05）
     useItemKey,
     togglePause,
     applyEarlyTier,
@@ -119,6 +121,11 @@ export function createGameScene(deps) {
       if (scene.effects.length >= MAX_EFFECTS) break;
       spawnLightning(scene.effects, path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, rng);
     }
+    // 电磁球：主目标处生成，沿链方向慢速移动，2.5s 持续电击（迭代 05）
+    const from = path[0], to = path.length > 1 ? path[1] : { x: from.x + 1, y: from.y };
+    const a = Math.atan2(to.y - from.y, to.x - from.x);
+    const dmg = scene.weapon.id === 'tesla' ? weaponStats(scene.weapon).damage * 0.5 * weaponStats(scene.weapon).chainDmgMult : 10;
+    scene.teslaBalls.push(createTeslaBall(from.x, from.y, Math.cos(a) * 120, Math.sin(a) * 120, dmg));
   }
 
   function sound(id) { if (audio) audio.play(id); }
@@ -186,14 +193,22 @@ export function createGameScene(deps) {
     for (const it of Object.values(ITEMS)) if (it.key === n) id = it.id;
     if (!id) return;
     if (id === 'turret') {
-      if (scene.turrets.length >= MAX_TURRETS || !useItem(scene.inventory, id)) { sound('click'); return; }
+      if (scene.turrets.length >= MAX_TURRETS) {
+        spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮已达上限（6）', '#f88');
+        sound('click'); return;
+      }
+      if (!useItem(scene.inventory, id)) { sound('click'); return; }
       scene.turrets.push(createTurret(player.x, player.y, scene.turretEnhance));
       spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮部署！', '#f80');
       return;
     }
     if (id === 'wall') {
-      if (scene.walls.length >= MAX_WALL_RINGS || !useItem(scene.inventory, id)) { sound('click'); return; }
-      scene.walls.push(createWallRing(player.x, player.y, scene.wallEnhance));
+      if (scene.walls.length >= MAX_WALL_SEGMENTS) {
+        spawnFloater(scene.floaters, player.x, player.y - 30, '围墙已达上限（16）', '#f88');
+        sound('click'); return;
+      }
+      if (!useItem(scene.inventory, id)) { sound('click'); return; }
+      scene.walls.push(createWallSegment(player.x, player.y, scene.wallEnhance));
       spawnFloater(scene.floaters, player.x, player.y - 30, '围墙竖起！', '#99a');
       return;
     }
@@ -318,7 +333,7 @@ export function createGameScene(deps) {
     // 僵尸：250px 内优先啃部署物，否则追玩家
     const edibles = [];
     for (const t of scene.turrets) if (t.alive) edibles.push(t);
-    for (const ring of scene.walls) for (const seg of ring) if (seg.alive) edibles.push(seg);
+    for (const seg of scene.walls) if (seg.alive) edibles.push(seg);
     for (const z of scene.zombies) {
       if (z.alive) updateZombie(z, player, map.obstacles, dt, edibles);
     }
@@ -333,7 +348,17 @@ export function createGameScene(deps) {
       killZombie,
       (z, p) => hitZombie(z, p.damage),
       scene.zombies, // allZombies：tesla 链电/aoe 爆炸遍历用
-      { onExplode: fxExplosion, onChain: fxChain }); // 弹道特效 hooks（迭代 04）
+      {
+        onExplode: fxExplosion,
+        onChain: fxChain,
+        onFrag: (x, y, frags) => {
+          // 榴弹二次爆炸：8 等分 ±0.15rad 抖动碎片弹（speed 420/range 160/aoe 45/越障/不二次分裂）
+          for (let i = 0; i < frags.count; i++) {
+            const a = (i / frags.count) * Math.PI * 2 + (rng() * 2 - 1) * 0.15;
+            spawnProjectile({ x, y, angle: a, speed: 420, damage: frags.dmg, range: 160, pierce: 0, knockback: 40, aoe: 45, arc: true, chain: 0 });
+          }
+        },
+      }); // 弹道特效 hooks（迭代 04/05）
 
     for (const z of scene.zombies) {
       if (!z.alive) continue;
@@ -393,14 +418,18 @@ export function createGameScene(deps) {
       }
     }
     for (let i = scene.walls.length - 1; i >= 0; i--) {
-      const ring = scene.walls[i];
-      for (let j = ring.length - 1; j >= 0; j--) {
-        if (!ring[j].alive) {
-          ring[j] = ring[ring.length - 1];
-          ring.pop();
-        }
+      if (!scene.walls[i].alive) {
+        scene.walls[i] = scene.walls[scene.walls.length - 1];
+        scene.walls.pop();
       }
-      if (ring.length === 0) scene.walls.splice(i, 1);
+    }
+
+    // 电磁球：移动 + 周期性电击（teslaball.js）
+    for (let i = scene.teslaBalls.length - 1; i >= 0; i--) {
+      const b = scene.teslaBalls[i];
+      if (updateTeslaBall(b, scene.zombies, dt, z => hitZombie(z, b.damage), killZombie)) continue;
+      scene.teslaBalls[i] = scene.teslaBalls[scene.teslaBalls.length - 1];
+      scene.teslaBalls.pop();
     }
 
     updateCamera(camera, player, MAP_SIZE, rng, dt);
@@ -488,19 +517,17 @@ export function createGameScene(deps) {
     }
 
     // 围墙：石灰色段圆 + 耐久弧
-    for (const ring of scene.walls) {
-      for (const seg of ring) {
-        ctx.fillStyle = '#8a8a92';
+    for (const seg of scene.walls) {
+      ctx.fillStyle = '#8a8a92';
+      ctx.beginPath();
+      ctx.arc(seg.x, seg.y, seg.r, 0, Math.PI * 2);
+      ctx.fill();
+      if (seg.hp < seg.maxHp) {
+        ctx.strokeStyle = '#5eff8a';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(seg.x, seg.y, seg.r, 0, Math.PI * 2);
-        ctx.fill();
-        if (seg.hp < seg.maxHp) {
-          ctx.strokeStyle = '#5eff8a';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(seg.x, seg.y, seg.r + 4, -Math.PI / 2, -Math.PI / 2 + (seg.hp / seg.maxHp) * Math.PI * 2);
-          ctx.stroke();
-        }
+        ctx.arc(seg.x, seg.y, seg.r + 4, -Math.PI / 2, -Math.PI / 2 + (seg.hp / seg.maxHp) * Math.PI * 2);
+        ctx.stroke();
       }
     }
 
@@ -551,14 +578,24 @@ export function createGameScene(deps) {
       }
     }
 
-    // 辅助武器载体：drone 青、gunner 橙、sniper 蓝（小三角）
+    // 辅助武器载体（迭代 05）：drone 青三角 / gunner 橙方块 / sniper 蓝菱形
     for (const b of scene.aux.bodies) {
       ctx.fillStyle = b.kind === 'drone' ? '#5ef' : b.kind === 'gunner' ? '#f80' : '#48f';
       ctx.beginPath();
-      ctx.moveTo(b.x, b.y - 7);
-      ctx.lineTo(b.x + 6, b.y + 5);
-      ctx.lineTo(b.x - 6, b.y + 5);
-      ctx.closePath();
+      if (b.kind === 'gunner') {
+        ctx.rect(b.x - 6, b.y - 6, 12, 12);
+      } else if (b.kind === 'sniper') {
+        ctx.moveTo(b.x, b.y - 8);
+        ctx.lineTo(b.x + 6, b.y);
+        ctx.lineTo(b.x, b.y + 8);
+        ctx.lineTo(b.x - 6, b.y);
+        ctx.closePath();
+      } else {
+        ctx.moveTo(b.x, b.y - 7);
+        ctx.lineTo(b.x + 6, b.y + 5);
+        ctx.lineTo(b.x - 6, b.y + 5);
+        ctx.closePath();
+      }
       ctx.fill();
     }
 
@@ -586,6 +623,19 @@ export function createGameScene(deps) {
       ctx.beginPath();
       ctx.moveTo(p.x - dx, p.y - dy);
       ctx.lineTo(p.x + dx, p.y + dy);
+      ctx.stroke();
+    }
+
+    // 电磁球（迭代 05）：青色电球 + 电弧
+    for (const b of scene.teslaBalls) {
+      ctx.fillStyle = 'rgba(94,239,255,.75)';
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(94,239,255,.5)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r + 5 + Math.sin(scene.time * 20) * 2, 0, Math.PI * 2);
       ctx.stroke();
     }
 

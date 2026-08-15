@@ -2,7 +2,8 @@
 
 export function createProjectile() {
   return { x: 0, y: 0, angle: 0, speed: 0, damage: 0, range: 0,
-    traveled: 0, pierce: 0, knockback: 0, aoe: 0, arc: false, chain: 0, alive: true };
+    traveled: 0, pierce: 0, knockback: 0, aoe: 0, arc: false, chain: 0,
+    frags: null, chainMult: 0.8, chainDmgMult: 1, alive: true };
 }
 
 export function resetProjectile(p, opts) {

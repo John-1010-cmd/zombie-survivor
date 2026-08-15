@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/core/rng.js';
 import { createWeapon, weaponStats, applyEnhancement, updateWeapon } from '../src/entities/weapon.js';
-import { WEAPONS, WEAPON_MAX_LEVEL, STAT_MAX, WEAPON_BASE_PRICE } from '../src/config/weapons.js';
+import { WEAPONS, WEAPON_MAX_LEVEL, STAT_MAX, WEAPON_BASE_PRICE, STAT_LABEL, SPECIAL_STATS } from '../src/config/weapons.js';
 
 test('射程内无僵尸不开火，无冷却', () => {
   const w = createWeapon('pistol'); // range 300
@@ -84,10 +84,13 @@ test('applyEnhancement 后 weaponStats 数值正确', () => {
   assert.equal(s.burstInterval, 0);
 });
 
-test('createWeapon 不再有 level 字段，enhance 四维归零', () => {
+test('createWeapon 不再有 level 字段，enhance 八维归零（四维+四专属维）', () => {
   const w = createWeapon('pistol');
   assert.ok(!('level' in w), 'level 字段已删除');
-  assert.deepEqual(w.enhance, { damage: 0, fireRate: 0, projectiles: 0, range: 0 });
+  assert.deepEqual(w.enhance, {
+    damage: 0, fireRate: 0, projectiles: 0, range: 0,
+    fragCount: 0, fragDamage: 0, chainLen: 0, chainDmg: 0,
+  });
 });
 
 test('createWeapon 初始 spent 为 0（换枪返还累计用）', () => {
@@ -204,4 +207,104 @@ test('enhance.projectiles=2 时一次开火产生 3 发扇形弹道', () => {
     assert.equal(s.arc, false);
     assert.equal(s.chain, 0);
   }
+});
+
+// ---------- 迭代05：专属维强化（fragCount/fragDamage/chainLen/chainDmg）----------
+
+test('专属维强化：applyEnhancement 通用（STAT_MAX 上限、未知 stat 忽略）', () => {
+  const w = createWeapon('tesla');
+  applyEnhancement(w, 'fragCount');
+  applyEnhancement(w, 'chainLen');
+  assert.equal(w.enhance.fragCount, 1);
+  assert.equal(w.enhance.chainLen, 1);
+  applyEnhancement(w, 'bogus'); // 未知 stat：忽略，不产生 NaN 脏数据
+  assert.equal(w.enhance.bogus, undefined);
+  assert.equal(w.enhance.damage, 0);
+  for (let i = 0; i < STAT_MAX; i++) applyEnhancement(w, 'fragCount');
+  assert.equal(w.enhance.fragCount, STAT_MAX); // 满维后忽略
+  applyEnhancement(w, 'fragCount');
+  assert.equal(w.enhance.fragCount, STAT_MAX);
+});
+
+test('weaponStats 专属派生字段：fragCount/fragDmgMult/chainLen/chainDmgMult 随强化联动', () => {
+  const w = createWeapon('grenade');
+  let s = weaponStats(w);
+  assert.equal(s.fragCount, 8); // 8 + 2×0
+  assert.equal(s.fragDmgMult, 0.4); // 0.4×1.15^0
+  assert.equal(s.chainLen, 3); // 3 + 0
+  assert.equal(s.chainDmgMult, 1); // 1 + 0.05×0
+  for (let i = 0; i < 4; i++) applyEnhancement(w, 'fragCount');
+  for (let i = 0; i < 2; i++) applyEnhancement(w, 'fragDamage');
+  applyEnhancement(w, 'chainLen');
+  for (let i = 0; i < 2; i++) applyEnhancement(w, 'chainDmg');
+  s = weaponStats(w);
+  assert.equal(s.fragCount, 16); // 8+2×4
+  assert.equal(s.fragDmgMult, 0.4 * Math.pow(1.15, 2));
+  assert.equal(s.chainLen, 4); // 3+1
+  assert.equal(s.chainDmgMult, 1 + 0.05 * 2);
+  for (let i = 0; i < 4; i++) applyEnhancement(w, 'fragCount'); // 补满 8
+  assert.equal(weaponStats(w).fragCount, 24); // 上限 24
+});
+
+test('grenade 开火弹带 frags（count=fragCount、dmg=主伤×fragDmgMult）；无专属维=8 发/40% 主伤', () => {
+  const rng = mulberry32(7);
+  const w = createWeapon('grenade');
+  const owner = { x: 0, y: 0 };
+  const z = { x: 200, y: 0, alive: true };
+  const shots = [];
+  updateWeapon(w, owner, [z], s => shots.push(s), rng, 0.016);
+  assert.equal(shots.length, 1);
+  assert.deepEqual(shots[0].frags, { count: 8, dmg: 25 * 0.4 });
+  assert.equal(shots[0].aoe, 130); // 既有 aoe 不受影响
+});
+
+test('grenade 专属强化后 frags 数值联动（count 16、dmg×1.15²）', () => {
+  const rng = mulberry32(8);
+  const w = createWeapon('grenade');
+  for (let i = 0; i < 4; i++) applyEnhancement(w, 'fragCount');
+  for (let i = 0; i < 2; i++) applyEnhancement(w, 'fragDamage');
+  const owner = { x: 0, y: 0 };
+  const z = { x: 200, y: 0, alive: true };
+  const shots = [];
+  updateWeapon(w, owner, [z], s => shots.push(s), rng, 0.016);
+  assert.equal(shots[0].frags.count, 16);
+  assert.ok(Math.abs(shots[0].frags.dmg - 25 * 0.4 * Math.pow(1.15, 2)) < 1e-9);
+});
+
+test('tesla 开火弹带 chain=chainLen、chainMult=0.8、chainDmgMult；专属强化联动', () => {
+  const rng = mulberry32(9);
+  const w = createWeapon('tesla');
+  for (let i = 0; i < 2; i++) applyEnhancement(w, 'chainLen');
+  applyEnhancement(w, 'chainDmg');
+  const owner = { x: 0, y: 0 };
+  const z = { x: 200, y: 0, alive: true };
+  const shots = [];
+  updateWeapon(w, owner, [z], s => shots.push(s), rng, 0.016);
+  assert.equal(shots.length, 1);
+  assert.equal(shots[0].chain, 5); // 3 + 2
+  assert.equal(shots[0].chainMult, 0.8);
+  assert.equal(shots[0].chainDmgMult, 1.05); // 1 + 0.05×1
+});
+
+test('非 grenade/tesla 弹不带 frags/chainMult/chainDmgMult', () => {
+  const rng = mulberry32(10);
+  const w = createWeapon('rocket');
+  const owner = { x: 0, y: 0 };
+  const z = { x: 200, y: 0, alive: true };
+  const shots = [];
+  updateWeapon(w, owner, [z], s => shots.push(s), rng, 0.016);
+  assert.equal(shots[0].frags, undefined);
+  assert.equal(shots[0].chainMult, undefined);
+  assert.equal(shots[0].chainDmgMult, undefined);
+});
+
+test('STAT_LABEL 增 4 专属维标签；SPECIAL_STATS 导出（grenade/tesla 各两条）', () => {
+  assert.equal(STAT_LABEL.fragCount, '榴弹碎片 +2');
+  assert.equal(STAT_LABEL.fragDamage, '二次伤害 +15%');
+  assert.equal(STAT_LABEL.chainLen, '链路长度 +1');
+  assert.equal(STAT_LABEL.chainDmg, '二次伤害 +5%');
+  assert.deepEqual(SPECIAL_STATS, {
+    grenade: ['fragCount', 'fragDamage'],
+    tesla: ['chainLen', 'chainDmg'],
+  });
 });

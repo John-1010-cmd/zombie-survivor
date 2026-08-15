@@ -1,7 +1,7 @@
-// test/aux.test.js —— 辅助武器：结构、载体生成、环绕/跟随运动与开火。
+// test/companions.test.js —— 辅助武器：结构、载体生成、环绕运动与开火（迭代 05：三种全部环绕）。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAux, spawnAuxBodies, updateAuxBodies, auxStats, AUX_CONFIG } from '../src/entities/companions.js';
+import { createAux, spawnAuxBodies, updateAuxBodies, auxStats, AUX_CONFIG, ORBIT_SPEED } from '../src/entities/companions.js';
 
 const rng = () => 0.5;
 
@@ -15,10 +15,16 @@ test('createAux 结构：counts/增强四维/bodies/t', () => {
   assert.equal(aux.t, 0);
 });
 
-test('AUX_CONFIG 基值 per 契约', () => {
+test('AUX_CONFIG 基值 per 契约：三种均 orbit（无 follow）', () => {
   assert.deepEqual(AUX_CONFIG.drone, { name: '随行无人机', orbit: 90, damage: 6, fireRate: 2, projectileSpeed: 500, range: 250, aoe: 0 });
-  assert.deepEqual(AUX_CONFIG.gunner, { name: '随行移动火炮', follow: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 320, aoe: 60 });
-  assert.deepEqual(AUX_CONFIG.sniper, { name: '随行远程火炮', follow: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 500, aoe: 0 });
+  assert.deepEqual(AUX_CONFIG.gunner, { name: '随行移动火炮', orbit: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 320, aoe: 60 });
+  assert.deepEqual(AUX_CONFIG.sniper, { name: '随行远程火炮', orbit: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 500, aoe: 0 });
+  assert.equal('follow' in AUX_CONFIG.gunner, false);
+  assert.equal('follow' in AUX_CONFIG.sniper, false);
+});
+
+test('ORBIT_SPEED 角速 per 契约：drone 2.2 / gunner 1.4 / sniper 1.0', () => {
+  assert.deepEqual(ORBIT_SPEED, { drone: 2.2, gunner: 1.4, sniper: 1.0 });
 });
 
 test('spawnAuxBodies 按 counts 重建：数量/顺序/weapon 结构/共享增强', () => {
@@ -44,41 +50,63 @@ test('spawnAuxBodies 按 counts 重建：数量/顺序/weapon 结构/共享增�
   assert.deepEqual(aux.bodies, []);
 });
 
-test('drone 环绕：angle = idx 均分 + t·2，位置 = player + orbit·dir', () => {
+test('drone 环绕：angle = idx 均分 + t·2.2，位置 = player + orbit·dir', () => {
   const aux = createAux();
   aux.counts.drone = 2;
   spawnAuxBodies(aux);
   const player = { x: 10, y: 20, facing: 0 };
   updateAuxBodies(aux, player, [], () => {}, rng, 0.25);
-  // t=0.25：idx0 角度 0.5，idx1 角度 π+0.5
-  assert.ok(Math.abs(aux.bodies[0].x - (10 + 90 * Math.cos(0.5))) < 1e-6);
-  assert.ok(Math.abs(aux.bodies[0].y - (20 + 90 * Math.sin(0.5))) < 1e-6);
-  assert.ok(Math.abs(aux.bodies[1].x - (10 + 90 * Math.cos(Math.PI + 0.5))) < 1e-6);
-  assert.ok(Math.abs(aux.bodies[1].y - (20 + 90 * Math.sin(Math.PI + 0.5))) < 1e-6);
-  // 时间继续累积
+  // t=0.25：idx0 角度 0.55，idx1 角度 π+0.55
+  assert.ok(Math.abs(aux.bodies[0].x - (10 + 90 * Math.cos(0.55))) < 1e-6);
+  assert.ok(Math.abs(aux.bodies[0].y - (20 + 90 * Math.sin(0.55))) < 1e-6);
+  assert.ok(Math.abs(aux.bodies[1].x - (10 + 90 * Math.cos(Math.PI + 0.55))) < 1e-6);
+  assert.ok(Math.abs(aux.bodies[1].y - (20 + 90 * Math.sin(Math.PI + 0.55))) < 1e-6);
+  // 时间继续累积（角速 2.2 rad/s）
   updateAuxBodies(aux, player, [], () => {}, rng, 0.25);
-  assert.ok(Math.abs(aux.bodies[0].x - (10 + 90 * Math.cos(1.0))) < 1e-6);
-  assert.ok(Math.abs(aux.bodies[0].y - (20 + 90 * Math.sin(1.0))) < 1e-6);
+  assert.ok(Math.abs(aux.bodies[0].x - (10 + 90 * Math.cos(1.1))) < 1e-6);
+  assert.ok(Math.abs(aux.bodies[0].y - (20 + 90 * Math.sin(1.1))) < 1e-6);
 });
 
-test('gunner/sniper 跟随玩家后方偏移点（lerp 0.1）', () => {
+test('gunner/sniper 环绕：orbit 半径、角度按各自角速随时间变化', () => {
   const aux = createAux();
   aux.counts.gunner = 1;
   aux.counts.sniper = 1;
   spawnAuxBodies(aux);
-  const player = { x: 0, y: 0, facing: 0 }; // 朝东 → 后方 (-60,0)/(-100,0)
-  for (let i = 0; i < 80; i++) updateAuxBodies(aux, player, [], () => {}, rng, 0.016);
-  const g = aux.bodies[0];
-  const s = aux.bodies[1];
-  assert.ok(Math.abs(g.x - (-60)) < 0.1);
-  assert.ok(Math.abs(g.y) < 0.1);
-  assert.ok(Math.abs(s.x - (-100)) < 0.1);
-  assert.ok(Math.abs(s.y) < 0.1);
-  // 朝向反转 → 后方在另一侧
-  player.facing = Math.PI;
-  for (let i = 0; i < 80; i++) updateAuxBodies(aux, player, [], () => {}, rng, 0.016);
-  assert.ok(Math.abs(g.x - 60) < 0.1);
-  assert.ok(Math.abs(s.x - 100) < 0.1);
+  const player = { x: 0, y: 0, facing: 0 };
+  updateAuxBodies(aux, player, [], () => {}, rng, 0.25);
+  const g = aux.bodies[0]; // gunner：角度 0.25×1.4 = 0.35
+  const s = aux.bodies[1]; // sniper：角度 0.25×1.0 = 0.25
+  assert.ok(Math.abs(g.x - 60 * Math.cos(0.35)) < 1e-6);
+  assert.ok(Math.abs(g.y - 60 * Math.sin(0.35)) < 1e-6);
+  assert.ok(Math.abs(s.x - 100 * Math.cos(0.25)) < 1e-6);
+  assert.ok(Math.abs(s.y - 100 * Math.sin(0.25)) < 1e-6);
+  // 距玩家 = orbit（±5 容差）
+  for (const [b, orbit] of [[g, 60], [s, 100]]) {
+    const d = Math.hypot(b.x - player.x, b.y - player.y);
+    assert.ok(Math.abs(d - orbit) <= 5, `距玩家 ${d} 应在 orbit(${orbit})±5 内`);
+  }
+  // 角度随时间变化 → 位置移动
+  const gx0 = g.x, gy0 = g.y;
+  updateAuxBodies(aux, player, [], () => {}, rng, 0.5);
+  assert.ok(Math.hypot(g.x - gx0, g.y - gy0) > 1, 'gunner 位置应随时间变化');
+  // t=0.75：gunner 角度 1.05，sniper 角度 0.75
+  assert.ok(Math.abs(g.x - 60 * Math.cos(1.05)) < 1e-6);
+  assert.ok(Math.abs(g.y - 60 * Math.sin(1.05)) < 1e-6);
+  assert.ok(Math.abs(s.x - 100 * Math.cos(0.75)) < 1e-6);
+  assert.ok(Math.abs(s.y - 100 * Math.sin(0.75)) < 1e-6);
+});
+
+test('同类型多体：起始角按 idx 均分（dt=0 即起始角）', () => {
+  const aux = createAux();
+  aux.counts.gunner = 2;
+  spawnAuxBodies(aux);
+  const player = { x: 10, y: 20, facing: 0 };
+  updateAuxBodies(aux, player, [], () => {}, rng, 0);
+  // idx0 角度 0 → 右侧 (10+60, 20)；idx1 角度 π → 左侧 (10-60, 20)
+  assert.ok(Math.abs(aux.bodies[0].x - (10 + 60)) < 1e-6);
+  assert.ok(Math.abs(aux.bodies[0].y - 20) < 1e-6);
+  assert.ok(Math.abs(aux.bodies[1].x - (10 - 60)) < 1e-6);
+  assert.ok(Math.abs(aux.bodies[1].y - 20) < 1e-6);
 });
 
 test('drone 开火：cooldown 制、基础数值、死尸不触发', () => {
@@ -112,7 +140,7 @@ test('drone 开火：cooldown 制、基础数值、死尸不触发', () => {
   assert.equal(shots.length, 2);
 });
 
-test('gunner/sniper 开火：aoe 60 / 长射程 500', () => {
+test('gunner/sniper 开火：aoe 60 / 长射程 500（环绕 orbit 60/100，原射程仍覆盖）', () => {
   const aux = createAux();
   aux.counts.gunner = 1;
   aux.counts.sniper = 1;
@@ -120,7 +148,7 @@ test('gunner/sniper 开火：aoe 60 / 长射程 500', () => {
   const player = { x: 0, y: 0, facing: 0 };
   const shots = [];
   const z = { x: 450, y: 0, alive: true };
-  // 首帧：gunner 在 (0,0)（d=450 > 320 不开火）；sniper 在 (0,0)（d=450 < 500 开火）
+  // 首帧：gunner 在 orbit 60 上（d≈390 > 320 不开火）；sniper 在 orbit 100 上（d≈350 < 500 开火）
   updateAuxBodies(aux, player, [z], s => shots.push(s), rng, 0.016);
   assert.equal(shots.length, 1);
   assert.equal(shots[0].damage, 30);

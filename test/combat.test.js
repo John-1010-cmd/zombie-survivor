@@ -382,3 +382,57 @@ test('不传 opts：aoe 与 chain 弹正常结算、不报错', () => {
   assert.equal(pa.alive, false);
   assert.equal(pc.alive, false);
 });
+
+// ---------- 迭代05：chainDmgMult 乘区 / frags onFrag hook ----------
+
+test('chainDmgMult 乘区：每跳伤害 = 主伤 × chainMult^i × chainDmgMult', () => {
+  const z0 = createZombie('normal', 1005, 1000, T1);
+  const z1 = createZombie('normal', 1015, 1000, T1);
+  const z2 = createZombie('normal', 1025, 1000, T1);
+  const hash = createSpatialHash();
+  for (const z of [z0, z1, z2]) hash.insert(z);
+  const p = makeProjectile({ damage: 10, chain: 2, chainMult: 0.8, chainDmgMult: 1.1 });
+  resolveProjectileHits([p], hash, [], () => {}, () => {}, [z0, z1, z2]);
+  assert.equal(z0.hp, 20); // 主目标不衰减
+  assert.ok(Math.abs(z1.hp - (30 - 10 * Math.pow(0.8, 1) * 1.1)) < 1e-9);
+  assert.ok(Math.abs(z2.hp - (30 - 10 * Math.pow(0.8, 2) * 1.1)) < 1e-9);
+  assert.equal(p.alive, false);
+});
+
+test('chain 弹未带 chainMult/chainDmgMult 字段时按默认 0.8 / 1 结算', () => {
+  const z0 = createZombie('normal', 1005, 1000, T1);
+  const z1 = createZombie('normal', 1015, 1000, T1);
+  const hash = createSpatialHash();
+  hash.insert(z0); hash.insert(z1);
+  const p = makeProjectile({ damage: 10, chain: 1 }); // 无 chainMult/chainDmgMult
+  resolveProjectileHits([p], hash, [], () => {}, () => {}, [z0, z1]);
+  assert.ok(Math.abs(z1.hp - (30 - 10 * 0.8 * 1)) < 1e-9);
+  assert.equal(p.alive, false);
+});
+
+test('frags 弹 aoe 命中触发 onFrag(p.x, p.y, p.frags)，参数为弹坐标与 frags 对象', () => {
+  const main = createZombie('normal', 1005, 1000, T1);
+  const hash = createSpatialHash();
+  hash.insert(main);
+  const frags = { count: 8, dmg: 10 };
+  const p = makeProjectile({ damage: 10, aoe: 90, frags });
+  let fragArgs = null;
+  resolveProjectileHits([p], hash, [], () => {}, () => {},
+    [main], { onFrag: (x, y, f) => { fragArgs = [x, y, f]; } });
+  assert.deepEqual(fragArgs, [1000, 1000, frags]);
+  assert.equal(main.hp, 20);
+  assert.equal(p.alive, false);
+});
+
+test('无 frags 的 aoe 弹不触发 onFrag（onExplode 照常触发）', () => {
+  const main = createZombie('normal', 1005, 1000, T1);
+  const hash = createSpatialHash();
+  hash.insert(main);
+  const p = makeProjectile({ damage: 10, aoe: 90 });
+  let exploded = false, fragCalled = false;
+  resolveProjectileHits([p], hash, [], () => {}, () => {},
+    [main], { onExplode: () => { exploded = true; }, onFrag: () => { fragCalled = true; } });
+  assert.equal(exploded, true);
+  assert.equal(fragCalled, false);
+  assert.equal(p.alive, false);
+});

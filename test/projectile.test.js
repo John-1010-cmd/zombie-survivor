@@ -6,7 +6,8 @@ import { createProjectile, resetProjectile, updateProjectile } from '../src/enti
 test('createProjectile 返回默认字段', () => {
   assert.deepEqual(createProjectile(), {
     x: 0, y: 0, angle: 0, speed: 0, damage: 0, range: 0,
-    traveled: 0, pierce: 0, knockback: 0, aoe: 0, arc: false, chain: 0, alive: true,
+    traveled: 0, pierce: 0, knockback: 0, aoe: 0, arc: false, chain: 0,
+    frags: null, chainMult: 0.8, chainDmgMult: 1, alive: true,
   });
 });
 
@@ -55,4 +56,22 @@ test('traveled 达到 range 后 alive=false', () => {
   resetProjectile(p, { x: 0, y: 0, angle: 0, speed: 100, damage: 1, range: 100, pierce: 0, knockback: 0 });
   updateProjectile(p, 1); // traveled == range
   assert.equal(p.alive, false);
+});
+
+test('createProjectile 默认带 frags/chainMult/chainDmgMult，reset 可透传覆盖', () => {
+  const p = createProjectile();
+  assert.equal(p.frags, null);
+  assert.equal(p.chainMult, 0.8);
+  assert.equal(p.chainDmgMult, 1);
+  resetProjectile(p, { x: 0, y: 0, angle: 0, speed: 10, damage: 1, range: 100,
+    frags: { count: 8, dmg: 10 }, chainMult: 0.8, chainDmgMult: 1.1 });
+  assert.deepEqual(p.frags, { count: 8, dmg: 10 });
+  assert.equal(p.chainMult, 0.8);
+  assert.equal(p.chainDmgMult, 1.1);
+  // 未提供的字段保留默认值
+  const q = createProjectile();
+  resetProjectile(q, { x: 0, y: 0, angle: 0, speed: 10, damage: 1, range: 100 });
+  assert.equal(q.frags, null);
+  assert.equal(q.chainMult, 0.8);
+  assert.equal(q.chainDmgMult, 1);
 });
