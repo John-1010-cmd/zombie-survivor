@@ -17,16 +17,11 @@ import {
   spawnFloater, updateFloaters, renderFloaters,
 } from './entities/effects.js';
 import { ZOMBIES } from './config/zombies.js';
+import { renderHud } from './systems/hud.js';
 
 const MAX_PROJECTILES = 400; // 全局性能上限（spec §9）
 const MAX_PARTICLES = 500;   // spec §9 粒子上限
 const MAX_FLOATERS = 100;    // 伤害数字上限（计划自定，防高射速下无界增长）
-
-function formatTime(t) {
-  const m = Math.floor(t / 60);
-  const s = Math.floor(t % 60);
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
 
 export function createGameScene(deps) {
   const { canvas, input, onLevelUp, onGameOver } = deps;
@@ -251,18 +246,7 @@ export function createGameScene(deps) {
 
     ctx.restore();
 
-    // 最小 HUD（Task 15 抽到 hud.js）：左上血条 + 右上计时
-    const bw = 240, bh = 14;
-    ctx.fillStyle = '#a33';
-    ctx.fillRect(12, 12, bw, bh);
-    ctx.fillStyle = '#5eff8a';
-    ctx.fillRect(12, 12, bw * Math.max(0, player.hp / player.maxHp), bh);
-
-    ctx.fillStyle = '#eee';
-    ctx.font = '24px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(formatTime(scene.time), canvas.width - 16, 32);
-    ctx.textAlign = 'left';
+    renderHud(ctx, scene); // 屏幕空间绘制，必须在 camera 变换 ctx.restore() 之后调用
   }
 
   return scene;

@@ -2,17 +2,14 @@
 import { createEngine } from './core/engine.js';
 import { createInput } from './core/input.js';
 import { createGameScene } from './game.js';
+import { showLevelUp } from './ui/levelup.js';
 
 const canvas = document.getElementById('game');
 const engine = createEngine(canvas);
 engine.setScene(createGameScene({
   canvas,
   input: createInput(),
-  onLevelUp: g => {
-    console.log('level up', g.player.level);
-    g.pendingLevelUps = 0;
-    g.paused = false;
-  },
+  onLevelUp: g => { showLevelUp(document.getElementById('levelup'), g, () => {}); },
   onGameOver: s => console.log('game over', s),
 }));
 engine.start();
