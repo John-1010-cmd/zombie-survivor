@@ -44,3 +44,24 @@ test('击退速度随时间衰减', () => {
   updateZombie(z, { x: 9999, y: 0 }, [], 0.5);
   assert.ok(Math.abs(z.kbx) < Math.abs(k0));
 });
+
+test('createZombie 产出 coin 字段（击杀掉落面值 1/1/5）', () => {
+  assert.equal(createZombie('normal', 0, 0, T1).coin, 1);
+  assert.equal(createZombie('fast', 0, 0, T1).coin, 1);
+  assert.equal(createZombie('tank', 0, 0, T1).coin, 5);
+});
+
+test('守门 Boss 创建：数值与抗性生效，倍率照常作用', () => {
+  const b = createZombie('boss', 10, 10, T1);
+  assert.equal(b.type, 'boss');
+  assert.equal(b.r, 41);
+  assert.equal(b.hp, 7040);
+  assert.equal(b.maxHp, 7040);
+  assert.equal(b.speed, 20);
+  assert.equal(b.damage, 40);
+  assert.equal(b.coin, 50);
+  assert.equal(b.knockbackResist, 0.95);
+  const b4 = createZombie('boss', 0, 0, T4);
+  assert.equal(b4.hp, 7040 * 3.2);
+  assert.equal(b4.speed, 20 * 1.05);
+});

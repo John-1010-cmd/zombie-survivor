@@ -7,7 +7,7 @@ export function createZombie(typeId, x, y, tierCfg) {
     type: typeId, x, y, r: c.radius,
     hp: c.hp * tierCfg.hpMult, maxHp: c.hp * tierCfg.hpMult,
     speed: c.speed * tierCfg.speedMult,
-    damage: c.damage, xp: c.xp,
+    damage: c.damage, coin: c.coin,
     knockbackResist: c.knockbackResist,
     kbx: 0, kby: 0, hitFlash: 0, alive: true,
   };

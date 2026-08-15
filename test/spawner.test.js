@@ -1,92 +1,88 @@
+// test/spawner.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/core/rng.js';
 import { ZOMBIES } from '../src/config/zombies.js';
 import { MAX_ZOMBIES } from '../src/config/difficulty.js';
-import { createSpawner, updateSpawner } from '../src/systems/spawner.js';
+import { createSpawner, updateSpawner, offscreenPoint } from '../src/systems/spawner.js';
+
+const CAM = { x: 860, y: 1140, viewW: 1280, viewH: 720 }; // 镜头中心 = (1500,1500)
 
 test('t=0 新手期 weights 只有 normal，只刷 normal', () => {
   const sp = createSpawner();
-  const cam = { x: 860, y: 1140, viewW: 1280, viewH: 720 }; // 镜头中心 = (1500,1500)
   const zombies = [];
   const rng = mulberry32(1);
-  for (let i = 0; i < 100; i++) updateSpawner(sp, 0, cam, 3000, zombies, 0, rng, 0.1);
+  for (let i = 0; i < 100; i++) updateSpawner(sp, 0, CAM, 3000, zombies, 0, rng, 0.1);
   assert.ok(zombies.length > 0, `应刷出僵尸，实际 ${zombies.length}`);
   for (const z of zombies) assert.equal(z.type, 'normal');
 });
 
 test('budget 最多累计 2 秒 bps，不随刷新消耗虚高', () => {
   const sp = createSpawner();
-  const cam = { x: 860, y: 1140, viewW: 1280, viewH: 720 }; // 镜头中心 = (1500,1500)
   const zombies = [];
   const rng = mulberry32(2);
-  // time=60：tier 1，bps=2，封顶=4；aliveCount 已满则常规刷怪不消耗预算，可观察纯累计
+  // time=60：tier 1，bps=3，封顶=6；aliveCount 已满则常规刷怪不消耗预算，可观察纯累计
   for (let i = 0; i < 500; i++) {
-    updateSpawner(sp, 60, cam, 3000, zombies, MAX_ZOMBIES, rng, 0.016);
-    assert.ok(sp.budget <= 2 * 2 + 1e-9, `budget=${sp.budget} 超出封顶`);
+    updateSpawner(sp, 60, CAM, 3000, zombies, MAX_ZOMBIES, rng, 0.016);
+    assert.ok(sp.budget <= 2 * 3 + 1e-9, `budget=${sp.budget} 超出封顶`);
   }
-  assert.ok(Math.abs(sp.budget - 2 * 2) < 1e-6, `budget 应封顶在 ${2 * 2}，实际 ${sp.budget}`);
+  assert.ok(Math.abs(sp.budget - 2 * 3) < 1e-6, `budget 应封顶在 ${2 * 3}，实际 ${sp.budget}`);
 });
 
 test('time=0 预算从 0.5/s 起步，同样时长刷得比 time=60 少', () => {
-  const cam = { x: 860, y: 1140, viewW: 1280, viewH: 720 }; // 镜头中心 = (1500,1500)
   const zA = [], zB = [];
   const spA = createSpawner(), spB = createSpawner();
   const rngA = mulberry32(7), rngB = mulberry32(7);
   for (let i = 0; i < 200; i++) {
-    updateSpawner(spA, 0, cam, 3000, zA, 0, rngA, 0.1);
-    updateSpawner(spB, 60, cam, 3000, zB, 0, rngB, 0.1);
+    updateSpawner(spA, 0, CAM, 3000, zA, 0, rngA, 0.1);
+    updateSpawner(spB, 60, CAM, 3000, zB, 0, rngB, 0.1);
   }
   assert.ok(zA.length > 0, `新手期应能刷出僵尸，实际 ${zA.length}`);
   assert.ok(zB.length > zA.length, `t=60 刷 ${zB.length} 只应多于 t=0 的 ${zA.length} 只`);
 });
 
-test('跨档瞬间僵尸数突增包围潮数量', () => {
-  const cam = { x: 860, y: 1140, viewW: 1280, viewH: 720 }; // 镜头中心 = (1500,1500)
+test('跨档瞬间僵尸数突增包围潮数量（SURGE_CAP=48，档 2 = 25 只）', () => {
   const zombies = [];
   const rng = mulberry32(3);
   const sp = createSpawner();
-  for (let i = 0; i < 100; i++) updateSpawner(sp, 100, cam, 3000, zombies, 0, rng, 1 / 60);
+  for (let i = 0; i < 100; i++) updateSpawner(sp, 100, CAM, 3000, zombies, 0, rng, 1 / 60);
   const before = zombies.length;
-  const n = updateSpawner(sp, 180, cam, 3000, zombies, 0, rng, 1 / 60); // 跨入档 2
-  // 20+(2-1)×5 的包围潮 + 0~3 只常规补刷（取决于此前预算结余），区间断言避免脆等值
-  assert.ok(n >= 20 && n <= 28, `跨档新增 ${n} 只，应在 20~28 之间`);
+  const n = updateSpawner(sp, 180, CAM, 3000, zombies, 0, rng, 1 / 60); // 跨入档 2
+  // 25 只包围潮 + 0~6 只常规补刷（取决于此前预算结余），区间断言避免脆等值
+  assert.ok(n >= 25 && n <= 31, `跨档新增 ${n} 只，应在 25~31 之间`);
   assert.equal(zombies.length - before, n);
   assert.equal(sp.lastTier, 2);
 });
 
 test('包围潮同样受 MAX_ZOMBIES 上限约束', () => {
-  const cam = { x: 860, y: 1140, viewW: 1280, viewH: 720 };
   const zombies = [];
   const rng = mulberry32(3);
   const sp = createSpawner();
-  const n = updateSpawner(sp, 180, cam, 3000, zombies, MAX_ZOMBIES - 10, rng, 1 / 60);
+  const n = updateSpawner(sp, 180, CAM, 3000, zombies, MAX_ZOMBIES - 10, rng, 1 / 60);
   assert.equal(n, 10); // 名额只剩 10：包围潮截断在 10，常规刷怪亦不再进行
   assert.equal(sp.lastTier, 2);
 });
 
 test('aliveCount 达到 MAX_ZOMBIES 后不再刷怪，只补足差额', () => {
-  const cam = { x: 860, y: 1140, viewW: 1280, viewH: 720 }; // 镜头中心 = (1500,1500)
   const rng = mulberry32(4);
   const sp = createSpawner();
   sp.budget = 999;
   const zombies = [];
-  assert.equal(updateSpawner(sp, 60, cam, 3000, zombies, MAX_ZOMBIES, rng, 1), 0);
+  assert.equal(updateSpawner(sp, 60, CAM, 3000, zombies, MAX_ZOMBIES, rng, 1), 0);
   assert.equal(zombies.length, 0);
   const sp2 = createSpawner();
   sp2.budget = 999;
   const zombies2 = [];
-  assert.equal(updateSpawner(sp2, 60, cam, 3000, zombies2, MAX_ZOMBIES - 1, rng, 1), 1);
+  assert.equal(updateSpawner(sp2, 60, CAM, 3000, zombies2, MAX_ZOMBIES - 1, rng, 1), 1);
   assert.equal(zombies2.length, 1);
 });
 
 test('t=1500（9 档）僵尸 hp 用档 8 封顶倍率 ×10', () => {
-  const cam = { x: 860, y: 1140, viewW: 1280, viewH: 720 }; // 镜头中心 = (1500,1500)
   const zombies = [];
   const rng = mulberry32(6);
   const sp = createSpawner();
   sp.budget = 999;
-  const n = updateSpawner(sp, 1500, cam, 3000, zombies, 0, rng, 1);
+  const n = updateSpawner(sp, 1500, CAM, 3000, zombies, 0, rng, 1);
   assert.ok(n > 0);
   assert.equal(sp.lastTier, 9);
   for (const z of zombies) assert.equal(z.hp, ZOMBIES[z.type].hp * 10);
@@ -98,10 +94,51 @@ test('刷怪点始终落在 [20, mapSize-20] 内（角落镜头强制退化到�
   const sp = createSpawner();
   sp.budget = 999;
   const rng = () => 0.75; // 恒定角度 0.75×2π ≈ 270°（正上方）：落点 y<0 必越界，10 次尝试全失败 → 退化为地图内随机点
-  updateSpawner(sp, 60, cam, 3000, zombies, 0, rng, 1);
+  updateSpawner(sp, 60, CAM, 3000, zombies, 0, rng, 1);
   assert.ok(zombies.length > 0);
   for (const z of zombies) {
     assert.ok(z.x >= 20 && z.x <= 2980 && z.y >= 20 && z.y <= 2980,
       `刷怪点 (${z.x},${z.y}) 越界`);
+  }
+});
+
+test('budgetMult=1.5 作用于 bps：封顶随倍率放大（坚守高峰用）', () => {
+  const sp = createSpawner();
+  const zombies = [];
+  const rng = mulberry32(5);
+  for (let i = 0; i < 500; i++) {
+    updateSpawner(sp, 60, CAM, 3000, zombies, MAX_ZOMBIES, rng, 0.016, 1.5);
+    assert.ok(sp.budget <= 2 * 3 * 1.5 + 1e-9, `budget=${sp.budget} 超出封顶`);
+  }
+  assert.ok(Math.abs(sp.budget - 2 * 3 * 1.5) < 1e-6, `budget 应封顶在 9，实际 ${sp.budget}`);
+});
+
+test('budgetMult=1.5 同条件下刷怪量更多', () => {
+  const zA = [], zB = [];
+  const spA = createSpawner(), spB = createSpawner();
+  const rngA = mulberry32(11), rngB = mulberry32(11);
+  for (let i = 0; i < 200; i++) {
+    updateSpawner(spA, 60, CAM, 3000, zA, 0, rngA, 0.1);
+    updateSpawner(spB, 60, CAM, 3000, zB, 0, rngB, 0.1, 1.5);
+  }
+  assert.ok(zB.length > zA.length, `1.5× 刷 ${zB.length} 只应多于 1× 的 ${zA.length} 只`);
+});
+
+test('offscreenPoint：镜头外圆环内且不越界', () => {
+  const halfDiag = Math.hypot(CAM.viewW / 2, CAM.viewH / 2);
+  const rng = mulberry32(8);
+  for (let i = 0; i < 20; i++) {
+    const p = offscreenPoint(CAM, 3000, rng);
+    assert.ok(Math.hypot(p.x - 1500, p.y - 1500) > halfDiag, `点 (${p.x},${p.y}) 仍在屏幕内`);
+    assert.ok(p.x >= 20 && p.x <= 2980 && p.y >= 20 && p.y <= 2980, `点 (${p.x},${p.y}) 越界`);
+  }
+});
+
+test('offscreenPoint：角落镜头全部越界时退化为地图内随机点', () => {
+  const cam = { x: 0, y: 0, viewW: 1280, viewH: 720 };
+  const rng = () => 0.75; // 恒定角度落点在屏幕上方 → 必越界
+  for (let i = 0; i < 5; i++) {
+    const p = offscreenPoint(cam, 3000, rng);
+    assert.ok(p.x >= 20 && p.x <= 2980 && p.y >= 20 && p.y <= 2980, `退化点 (${p.x},${p.y}) 越界`);
   }
 });
