@@ -6,7 +6,7 @@ import { createProjectile, resetProjectile, updateProjectile } from '../src/enti
 test('createProjectile 返回默认字段', () => {
   assert.deepEqual(createProjectile(), {
     x: 0, y: 0, angle: 0, speed: 0, damage: 0, range: 0,
-    traveled: 0, pierce: 0, knockback: 0, alive: true,
+    traveled: 0, pierce: 0, knockback: 0, aoe: 0, arc: false, chain: 0, alive: true,
   });
 });
 
@@ -18,6 +18,20 @@ test('resetProjectile 应用 opts 并重置 traveled/alive', () => {
   assert.equal(p.damage, 8); assert.equal(p.range, 400);
   assert.equal(p.pierce, 2); assert.equal(p.knockback, 60);
   assert.equal(p.traveled, 0); assert.equal(p.alive, true);
+});
+
+test('resetProjectile 透传 aoe/arc/chain（Object.assign 自然覆盖默认值）', () => {
+  const p = createProjectile();
+  assert.equal(p.aoe, 0); assert.equal(p.arc, false); assert.equal(p.chain, 0);
+  resetProjectile(p, { x: 0, y: 0, angle: 0, speed: 10, damage: 1, range: 100,
+    aoe: 130, arc: true, chain: 3 });
+  assert.equal(p.aoe, 130);
+  assert.equal(p.arc, true);
+  assert.equal(p.chain, 3);
+  // 未提供的字段保留默认值
+  const q = createProjectile();
+  resetProjectile(q, { x: 0, y: 0, angle: 0, speed: 10, damage: 1, range: 100 });
+  assert.equal(q.aoe, 0); assert.equal(q.arc, false); assert.equal(q.chain, 0);
 });
 
 test('沿 angle 方向前进 speed*dt 且 traveled 累计', () => {

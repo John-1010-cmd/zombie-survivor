@@ -1,9 +1,9 @@
 // 武器实例：增强计算、索敌、cooldown 开火与 burst 连发。纯逻辑模块，无 DOM 依赖。
-import { WEAPONS, WEAPON_MAX_LEVEL } from '../config/weapons.js';
+import { WEAPONS, STAT_MAX } from '../config/weapons.js';
 
 export function createWeapon(id) {
   return {
-    id, level: 1,
+    id,
     enhance: { damage: 0, fireRate: 0, projectiles: 0, range: 0 },
     cooldown: 0, burstLeft: 0, burstTimer: 0, aimAngle: 0,
   };
@@ -19,17 +19,19 @@ export function weaponStats(w) {
     projectileSpeed: c.projectileSpeed,
     spread: c.spread,
     pierce: c.pierce,
-    aoe: c.aoe,
+    aoe: c.aoe || 0,
+    arc: c.arc === true,
+    chain: c.chain || 0,
     knockback: c.knockback,
     burst: c.burst,
     burstInterval: c.burstInterval,
   };
 }
 
+// per-stat 强化：每维独立上限 STAT_MAX（0–8），满维忽略
 export function applyEnhancement(w, stat) {
-  if (w.level >= WEAPON_MAX_LEVEL) return;
+  if (w.enhance[stat] >= STAT_MAX) return;
   w.enhance[stat] += 1;
-  w.level += 1;
 }
 
 function acquireTarget(w, owner, zombies, stats) {
@@ -56,6 +58,9 @@ function fire(w, owner, target, stats, spawnProjectile, rng) {
       range: stats.range,
       pierce: stats.pierce,
       knockback: stats.knockback,
+      aoe: stats.aoe,
+      arc: stats.arc,
+      chain: stats.chain,
     });
   }
 }
