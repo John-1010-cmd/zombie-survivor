@@ -71,6 +71,7 @@ export function createGameScene(deps) {
   let over = false;
   let lastShotSound = -1;
   let lastShotSoundId = '';
+  let prevTier = cfgFn(0).tier; // 横幅触发：档位变化检测（迭代 06）
   let auxSpawnedSignature = ''; // counts 变化检测（购买后重建载体）
 
   const scene = {
@@ -89,6 +90,7 @@ export function createGameScene(deps) {
     floaters: [],
     effects: [], // 爆环 / 闪电（迭代 04）
     teslaBalls: [], // 电磁球（迭代 05）
+    banner: { text: '', until: 0 }, // 档位来袭横幅（迭代 06）
     time: 0,
     kills: 0,
     rng,
@@ -121,21 +123,25 @@ export function createGameScene(deps) {
       if (scene.effects.length >= MAX_EFFECTS) break;
       spawnLightning(scene.effects, path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, rng);
     }
-    // 电磁球：主目标处生成，沿链方向慢速移动，2.5s 持续电击（迭代 05）
+    // 电磁球：主目标处生成（迭代 06：球径减小、多球随机偏移发散不重叠），沿链方向慢速移动，2.5s 持续电击
     const from = path[0], to = path.length > 1 ? path[1] : { x: from.x + 1, y: from.y };
     const a = Math.atan2(to.y - from.y, to.x - from.x);
     const dmg = scene.weapon.id === 'tesla' ? weaponStats(scene.weapon).damage * 0.5 * weaponStats(scene.weapon).chainDmgMult : 10;
-    scene.teslaBalls.push(createTeslaBall(from.x, from.y, Math.cos(a) * 120, Math.sin(a) * 120, dmg));
+    scene.teslaBalls.push(createTeslaBall(
+      from.x + (rng() * 2 - 1) * 35, from.y + (rng() * 2 - 1) * 35, // 发散偏移，多球不重叠
+      Math.cos(a) * 120, Math.sin(a) * 120, dmg));
   }
 
   function sound(id) { if (audio) audio.play(id); }
 
   function spawnProjectile(opts) {
     if (activeProjectiles >= MAX_PROJECTILES) return;
-    // 池化复用对象可能残留旧字段，统一归一（turret/aux 弹不总带全字段）
+    // 池化复用对象可能残留旧字段，统一归一（turret/aux 弹不总带全字段；
+    // frags/chainMult/chainDmgMult 缺失会继承前一颗榴弹/磁电弹的残留，导致碎片再次分裂——迭代 06 修复）
     const fromPlayer = opts.fromPlayer;
     const o = {
       aoe: 0, arc: false, chain: 0, pierce: 0, knockback: 0,
+      frags: null, chainMult: 0.8, chainDmgMult: 1,
       ...opts,
     };
     const p = projPool.obtain(o);
@@ -327,6 +333,13 @@ export function createGameScene(deps) {
       }
     }
 
+    // 下一档来袭横幅：档位切换瞬间（自然跨档/提前难度均触发），3s 缓慢闪烁后消失
+    const tierNow = cfgFn(scene.time).tier;
+    if (tierNow !== prevTier) {
+      scene.banner = { text: '第 ' + tierNow + ' 档来袭！', until: scene.time + 3 };
+      prevTier = tierNow;
+    }
+
     // 固定火炮自动开火
     for (const t of scene.turrets) updateTurret(t, scene.zombies, spawnProjectile, rng, dt);
 
@@ -352,10 +365,10 @@ export function createGameScene(deps) {
         onExplode: fxExplosion,
         onChain: fxChain,
         onFrag: (x, y, frags) => {
-          // 榴弹二次爆炸：8 等分 ±0.15rad 抖动碎片弹（speed 420/range 160/aoe 45/越障/不二次分裂）
+          // 榴弹二次爆炸：8 等分 ±0.15rad 抖动碎片弹（speed 420/range 160/aoe 30 小范围/越障/无 frags 不再次分裂——迭代 06）
           for (let i = 0; i < frags.count; i++) {
             const a = (i / frags.count) * Math.PI * 2 + (rng() * 2 - 1) * 0.15;
-            spawnProjectile({ x, y, angle: a, speed: 420, damage: frags.dmg, range: 160, pierce: 0, knockback: 40, aoe: 45, arc: true, chain: 0 });
+            spawnProjectile({ x, y, angle: a, speed: 420, damage: frags.dmg, range: 160, pierce: 0, knockback: 40, aoe: 30, arc: true, chain: 0 });
           }
         },
       }); // 弹道特效 hooks（迭代 04/05）
@@ -645,6 +658,21 @@ export function createGameScene(deps) {
 
     ctx.restore();
     ctx.textAlign = 'left';
+
+    // 档位来袭横幅（迭代 06）：顶部居中，缓慢闪烁 3s（自然跨档/提前难度触发）
+    if (scene.banner && scene.time < scene.banner.until) {
+      const t = 1 - (scene.banner.until - scene.time) / 3; // 0→1 进度
+      const alpha = 0.45 + 0.35 * Math.sin(scene.time * 8); // 缓慢闪烁
+      ctx.globalAlpha = Math.max(0.15, Math.min(1, alpha));
+      ctx.fillStyle = 'rgba(0,0,0,.55)';
+      ctx.fillRect(canvas.width / 2 - 220, 60, 440, 56);
+      ctx.fillStyle = '#ffd75e';
+      ctx.font = '34px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(scene.banner.text, canvas.width / 2, 99);
+      ctx.textAlign = 'left';
+      ctx.globalAlpha = 1;
+    }
 
     renderHud(ctx, scene);
   }

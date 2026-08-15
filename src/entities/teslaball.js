@@ -6,7 +6,7 @@ const TICK_RADIUS = 30;     // 电击判定半径（球心到僵尸圆心距 ≤
 const KNOCKBACK = 60;
 
 export function createTeslaBall(x, y, vx, vy, damage) {
-  return { x, y, vx, vy, r: 22, damage, tickT: TICK_INTERVAL, life: 2.5, alive: true };
+  return { x, y, vx, vy, r: 12, damage, tickT: TICK_INTERVAL, life: 2.5, alive: true }; // r 22→12（迭代 06：形状过大）
 }
 
 // 移动 + 周期电击；tick 时对半径内 alive 僵尸 damageZombie（击退背离球心）并回调

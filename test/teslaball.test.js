@@ -6,9 +6,9 @@ import { createTeslaBall, updateTeslaBall } from '../src/entities/teslaball.js';
 
 const T1 = { hpMult: 1, speedMult: 1 };
 
-test('createTeslaBall 字段齐全：r22 / tick 0.25 / life 2.5 / alive', () => {
+test('createTeslaBall 字段齐全：r12 / tick 0.25 / life 2.5 / alive（迭代 06：球径 22→12）', () => {
   const b = createTeslaBall(10, 20, 30, 40, 50);
-  assert.deepEqual(b, { x: 10, y: 20, vx: 30, vy: 40, r: 22, damage: 50, tickT: 0.25, life: 2.5, alive: true });
+  assert.deepEqual(b, { x: 10, y: 20, vx: 30, vy: 40, r: 12, damage: 50, tickT: 0.25, life: 2.5, alive: true });
 });
 
 test('沿 vx/vy 移动 speed*dt，返回存活', () => {
