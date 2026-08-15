@@ -24,10 +24,22 @@
 
 | 编队 | 范围 | 状态 |
 |---|---|---|
-| A 武器弹道 | weapons/weapon/projectile/combat | ⬜ |
-| B 部署辅助 | turret/wall/aux/items | ⬜ |
-| C 经济商店 | economy/shop/zombies/zombie | ⬜ |
-| 集成 | game/ui-shop/hud/index + 回归 + 提交 | ⬜ 主会话 |
+| A 武器弹道 | weapons/weapon/projectile/combat | ✅ 38/38 |
+| B 部署辅助 | turret/wall/companions(原aux)/items | ✅ 26/26 |
+| C 经济商店 | economy/shop/zombies/zombie | ✅ 34/34 |
+| 集成 | game/ui-shop/hud/index + 回归 + 提交 | ✅ 193/193 + 冒烟 25/25 |
+
+## 验收记录（2026-08-15）
+
+- **自动化**：`npm test` 193/193 全绿（新增 weapon/projectile/combat 扩展、turret/wall/companions、economy/shop/zombie 重写）
+- **无头冒烟 25/25**：六武器射程 ≤480、部署（火炮上限 6/围墙 8 段）、僵尸啃食耐久、辅助购买与轨道运动、换枪全局递增、道具各自递增、无尽死亡结算
+- **实施中裁定变更**（用户会话裁定）：
+  - 辅助强化/部署物强化改为**维度级独立计价**（原按类型合计）
+  - 换枪价格维持**全局计数**（1.4^n）
+  - 道具按各自已购次数 1.25^n 递增（itemBought 字典）
+- **工程事件**：`aux.js` 为 Windows 保留设备名导致 git 无法索引，重命名 `companions.js`（引用 4 处同步）
+- **提交**：3f6b5d5 / fbef793 / 3ac3a9a / bd4e489
+- **待人工浏览器终验**：分组商店视觉、射程圈观感、部署物/辅助手感、新武器打击感（清单见 `plan.md` 末节）
 
 ## 验收记录
 
