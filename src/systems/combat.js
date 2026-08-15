@@ -1,7 +1,18 @@
-// 命中结算：弹道 vs 障碍/僵尸（空间网格加速）。纯逻辑模块，无 DOM 依赖。
+// 命中结算：弹道 vs 障碍/僵尸（空间网格加速）+ 炸弹 AoE。纯逻辑模块，无 DOM 依赖。
 import { circleHit, circleRectHit } from '../core/physics.js';
 import { damageZombie } from '../entities/zombie.js';
 import { MAX_ZOMBIE_R } from '../config/zombies.js';
+
+// 炸弹道具 AoE：线性遍历，alive 且圆心距 ≤ radius + z.r 的僵尸受击（击退 200，方向背离爆心），按死亡回调。
+export function explode(x, y, radius, damage, zombies, onHit, onKill) {
+  for (const z of zombies) {
+    if (!z.alive) continue;
+    if (Math.hypot(z.x - x, z.y - y) > radius + z.r) continue;
+    const died = damageZombie(z, damage, 200, Math.atan2(z.y - y, z.x - x));
+    onHit(z);
+    if (died) onKill(z);
+  }
+}
 
 export function resolveProjectileHits(projectiles, hash, obstacles, onKill, onHit) {
   for (const p of projectiles) {

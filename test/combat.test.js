@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createSpatialHash } from '../src/core/physics.js';
 import { createZombie } from '../src/entities/zombie.js';
-import { resolveProjectileHits } from '../src/systems/combat.js';
+import { resolveProjectileHits, explode } from '../src/systems/combat.js';
 
 const T1 = { hpMult: 1, speedMult: 1 };
 
@@ -124,4 +124,48 @@ test('查询范围内但碰撞半径外的僵尸不命中', () => {
   assert.equal(hits, 0);
   assert.equal(z.hp, 30);
   assert.equal(p.alive, true);
+});
+
+// ---------- explode（炸弹道具）----------
+
+test('explode 命中爆炸半径内多只僵尸并扣血，圈外不受影响', () => {
+  const a = createZombie('normal', 1000, 1000, T1); // 距爆心 0
+  const b = createZombie('normal', 1040, 1000, T1); // 距 40 ≤ 50 + 14
+  const c = createZombie('normal', 1200, 1000, T1); // 距 200，圈外
+  let hits = 0, kills = 0;
+  explode(1000, 1000, 50, 10, [a, b, c], () => hits++, () => kills++);
+  assert.equal(hits, 2);
+  assert.equal(kills, 0);
+  assert.equal(a.hp, 20);
+  assert.equal(b.hp, 20);
+  assert.equal(c.hp, 30);
+});
+
+test('explode 边缘不命中：圆心距恰 > radius + z.r', () => {
+  const z = createZombie('normal', 1000 + 50 + 14 + 0.01, 1000, T1);
+  let hits = 0, kills = 0;
+  explode(1000, 1000, 50, 999, [z], () => hits++, () => kills++);
+  assert.equal(hits, 0);
+  assert.equal(kills, 0);
+  assert.equal(z.hp, 30);
+  assert.equal(z.alive, true);
+});
+
+test('explode 致死：onHit/onKill 触发且击退沿背离爆心方向', () => {
+  const z = createZombie('normal', 1010, 1000, T1); // 爆心 (1000,1000)，方向 +x
+  let kills = 0, hitArgs = null;
+  explode(1000, 1000, 50, 999, [z], z2 => { hitArgs = z2; }, () => kills++);
+  assert.equal(kills, 1);
+  assert.equal(hitArgs, z);
+  assert.equal(z.alive, false);
+  assert.ok(z.kbx > 0); // atan2(0, 10) = 0 → 击退 +x
+});
+
+test('explode 忽略已死亡僵尸', () => {
+  const z = createZombie('normal', 1000, 1000, T1);
+  z.alive = false;
+  let hits = 0, kills = 0;
+  explode(1000, 1000, 50, 999, [z], () => hits++, () => kills++);
+  assert.equal(hits, 0);
+  assert.equal(kills, 0);
 });
