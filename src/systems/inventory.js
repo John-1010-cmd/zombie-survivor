@@ -1,6 +1,10 @@
 // src/systems/inventory.js —— 道具背包：计数累加/使用/查询。纯逻辑，无 DOM 依赖。
+import { ITEM_IDS } from '../config/items.js';
+
 export function createInventory() {
-  return { medkit: 0, magnet: 0, bomb: 0 };
+  const inv = {};
+  for (const id of ITEM_IDS) inv[id] = 0;
+  return inv;
 }
 
 // 原地累加 n 件
