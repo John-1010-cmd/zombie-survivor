@@ -71,6 +71,7 @@ export function createGameScene(deps) {
   let over = false;
   let lastShotSound = -1;
   let lastShotSoundId = '';
+  let lastShotAngle = 0; // 最近一次发射的弹道角（电磁球扇形发散用，迭代 07）
   let prevTier = cfgFn(0).tier; // 横幅触发：档位变化检测（迭代 06）
   let auxSpawnedSignature = ''; // counts 变化检测（购买后重建载体）
 
@@ -123,13 +124,13 @@ export function createGameScene(deps) {
       if (scene.effects.length >= MAX_EFFECTS) break;
       spawnLightning(scene.effects, path[i].x, path[i].y, path[i + 1].x, path[i + 1].y, rng);
     }
-    // 电磁球：主目标处生成（迭代 06：球径减小、多球随机偏移发散不重叠），沿链方向慢速移动，2.5s 持续电击
-    const from = path[0], to = path.length > 1 ? path[1] : { x: from.x + 1, y: from.y };
-    const a = Math.atan2(to.y - from.y, to.x - from.x);
+    // 电磁球（迭代 07）：靠近角色处（玩家前方 55px）产生，沿子弹发射方向扇形发散（±26° 随机），2.5s 持续电击
+    const spread = 0.45; // 扇形半角 ≈ ±26°
+    const a = lastShotAngle + (rng() * 2 - 1) * spread;
+    const sx = player.x + Math.cos(lastShotAngle) * 55;
+    const sy = player.y + Math.sin(lastShotAngle) * 55;
     const dmg = scene.weapon.id === 'tesla' ? weaponStats(scene.weapon).damage * 0.5 * weaponStats(scene.weapon).chainDmgMult : 10;
-    scene.teslaBalls.push(createTeslaBall(
-      from.x + (rng() * 2 - 1) * 35, from.y + (rng() * 2 - 1) * 35, // 发散偏移，多球不重叠
-      Math.cos(a) * 120, Math.sin(a) * 120, dmg));
+    scene.teslaBalls.push(createTeslaBall(sx, sy, Math.cos(a) * 120, Math.sin(a) * 120, dmg));
   }
 
   function sound(id) { if (audio) audio.play(id); }
@@ -147,6 +148,7 @@ export function createGameScene(deps) {
     const p = projPool.obtain(o);
     activeProjectiles++;
     projectiles.push(p);
+    lastShotAngle = o.angle; // 记录弹道角（电磁球扇形发散用）
     // 射击音仅主武器触发且节流 0.12s
     if (fromPlayer) {
       const sid = scene.weapon.id === 'mg' ? 'shootMG' : 'shoot';
