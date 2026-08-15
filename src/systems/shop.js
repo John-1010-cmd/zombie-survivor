@@ -28,7 +28,7 @@ export function catalogFor(game, tierRemainingSec) {
   const weapons = [];
   for (const id of Object.keys(WEAPON_BASE_PRICE)) {
     if (id === w.id) continue;
-    weapons.push({ kind: 'weapon', weapon: id, price: weaponPrice(WEAPON_BASE_PRICE[id], game.weaponBought ?? 0) });
+    weapons.push({ kind: 'weapon', weapon: id, price: weaponPrice(WEAPON_BASE_PRICE[id], game.weaponBought ?? 0), refund: w.spent ?? 0 });
   }
 
   // 辅助武器：达数量上限下架；价格随**该类型**已购数量递增（各自独立计数）
@@ -44,7 +44,7 @@ export function catalogFor(game, tierRemainingSec) {
     for (const stat of ENHANCE_STATS) {
       const owned = game.aux.enhance[id][stat] ?? 0;
       if (owned >= STAT_MAX) continue;
-      auxEnhance.push({ kind: 'auxEnhance', aux: id, stat, price: enhancePrice(owned), owned });
+      auxEnhance.push({ kind: 'auxEnhance', aux: id, stat, price: enhancePrice(owned), owned, owned0: (game.aux.counts[id] ?? 0) === 0 });
     }
   }
 
@@ -84,11 +84,13 @@ export function buy(game, entry) {
     if (game.weapon.enhance[entry.stat] >= STAT_MAX) return false;
     game.coins -= entry.price;
     applyEnhancement(game.weapon, entry.stat);
+    game.weapon.spent = (game.weapon.spent || 0) + entry.price; // 累计强化花费，换枪时返还
     return true;
   }
   if (entry.kind === 'weapon') {
     game.coins -= entry.price;
-    game.weapon = createWeapon(entry.weapon);
+    game.coins += (game.weapon.spent || 0); // 返还旧武器强化花费（武器购买价不返还）
+    game.weapon = createWeapon(entry.weapon); // 新武器 spent 天然 0
     game.weaponBought = (game.weaponBought ?? 0) + 1; // 全局换枪计数（用户裁定）
     return true;
   }
@@ -99,6 +101,7 @@ export function buy(game, entry) {
     return true;
   }
   if (entry.kind === 'auxEnhance') {
+    if ((game.aux.counts[entry.aux] ?? 0) === 0) return false; // 未拥有该辅助：拒购不扣款
     if (game.aux.enhance[entry.aux][entry.stat] >= STAT_MAX) return false;
     game.coins -= entry.price;
     game.aux.enhance[entry.aux][entry.stat] += 1;

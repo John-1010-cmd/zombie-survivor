@@ -4,6 +4,7 @@ import { WEAPONS, STAT_MAX } from '../config/weapons.js';
 export function createWeapon(id) {
   return {
     id,
+    spent: 0, // 该武器累计已花费的强化银币（换枪时全额返还）
     enhance: { damage: 0, fireRate: 0, projectiles: 0, range: 0 },
     cooldown: 0, burstLeft: 0, burstTimer: 0, aimAngle: 0,
   };

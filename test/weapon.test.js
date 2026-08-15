@@ -90,6 +90,11 @@ test('createWeapon 不再有 level 字段，enhance 四维归零', () => {
   assert.deepEqual(w.enhance, { damage: 0, fireRate: 0, projectiles: 0, range: 0 });
 });
 
+test('createWeapon 初始 spent 为 0（换枪返还累计用）', () => {
+  const w = createWeapon('pistol');
+  assert.equal(w.spent, 0);
+});
+
 test('单维达 STAT_MAX 后 applyEnhancement 忽略，其他维仍可强化', () => {
   const w = createWeapon('pistol');
   for (let i = 0; i < STAT_MAX; i++) applyEnhancement(w, 'damage');

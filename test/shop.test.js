@@ -171,6 +171,7 @@ test('sniper 上限 2：购 2 把后下架', () => {
 
 test('auxEnhance：维度级独立计价，单维满 8 下架该条目', () => {
   const g = makeGame();
+  assert.equal(buy(g, { kind: 'aux', aux: 'drone', price: AUX_PRICES.drone }), true); // 先拥有无人机
   assert.equal(buy(g, { kind: 'auxEnhance', aux: 'drone', stat: 'damage', price: enhancePrice(0) }), true);
   assert.equal(g.aux.enhance.drone.damage, 1);
 
@@ -298,4 +299,63 @@ test('未知条目类型返回 false', () => {
   const g = makeGame();
   assert.equal(buy(g, { kind: 'mystery' }), false);
   assert.equal(g.coins, 100000);
+});
+
+test('enhance 购买累计 spent：spent += 每次强化价格', () => {
+  const g = makeGame(10000);
+  assert.equal(g.weapon.spent, 0);
+  assert.equal(buy(g, { kind: 'enhance', stat: 'damage', price: enhancePrice(0) }), true);
+  assert.equal(buy(g, { kind: 'enhance', stat: 'damage', price: enhancePrice(1) }), true);
+  assert.equal(buy(g, { kind: 'enhance', stat: 'range', price: enhancePrice(2) }), true);
+  assert.equal(g.weapon.spent, enhancePrice(0) + enhancePrice(1) + enhancePrice(2));
+  assert.equal(g.weapon.enhance.damage, 2);
+});
+
+test('换枪返还 spent（强化花费），武器购买价不返还，新武器 spent=0', () => {
+  const g = makeGame(10000);
+  g.weapon.spent = 130; // 模拟此前强化累计花费
+  const coinsBefore = g.coins;
+  assert.equal(buy(g, { kind: 'weapon', weapon: 'rifle', price: 80 }), true);
+  assert.equal(g.coins, coinsBefore - 80 + 130, '扣武器价、返还强化花费');
+  assert.equal(g.weapon.id, 'rifle');
+  assert.equal(g.weapon.spent, 0, '新武器 spent 归零');
+  // 再次换枪：新武器 spent=0 → 不返还
+  const coins2 = g.coins;
+  assert.equal(buy(g, { kind: 'weapon', weapon: 'pistol', price: 80 }), true);
+  assert.equal(g.coins, coins2 - 80);
+  assert.equal(g.weapon.spent, 0);
+});
+
+test('auxEnhance：counts=0 拒购且不扣款（未拥有该辅助）', () => {
+  const g = makeGame();
+  const coins = g.coins;
+  assert.equal(buy(g, { kind: 'auxEnhance', aux: 'gunner', stat: 'damage', price: enhancePrice(0) }), false);
+  assert.equal(g.coins, coins);
+  assert.equal(g.aux.enhance.gunner.damage, 0);
+  // 购得辅助后解锁强化
+  assert.equal(buy(g, { kind: 'aux', aux: 'gunner', price: AUX_PRICES.gunner }), true);
+  assert.equal(buy(g, { kind: 'auxEnhance', aux: 'gunner', stat: 'damage', price: enhancePrice(0) }), true);
+  assert.equal(g.aux.enhance.gunner.damage, 1);
+});
+
+test('辅助强化条目带 owned0 标记（counts===0 为 true，购得后 false）', () => {
+  const g = makeGame();
+  const auxEnh = () => groupOf(catalogFor(g, 0), '辅助强化');
+  assert.ok(auxEnh().filter(e => e.aux === 'drone').every(e => e.owned0 === true), '未拥有类型全为 owned0');
+  assert.ok(auxEnh().filter(e => e.aux === 'sniper').every(e => e.owned0 === true));
+  assert.equal(buy(g, { kind: 'aux', aux: 'drone', price: AUX_PRICES.drone }), true);
+  assert.ok(auxEnh().filter(e => e.aux === 'drone').every(e => e.owned0 === false), '购得后 owned0 解除');
+  assert.ok(auxEnh().filter(e => e.aux === 'sniper').every(e => e.owned0 === true), '未购类型仍为 owned0');
+});
+
+test('weapon 条目带 refund（= 当前武器 spent）', () => {
+  const g = makeGame(10000);
+  g.weapon.spent = 0;
+  const weapons = () => groupOf(catalogFor(g, 0), '更换武器');
+  assert.ok(weapons().every(e => e.refund === 0), '无强化时 refund=0');
+  g.weapon.spent = 130;
+  assert.ok(weapons().every(e => e.refund === 130), '强化累计 130 时全部条目 refund=130');
+  // 换枪后目录 refund 归零（新武器 spent=0）
+  assert.equal(buy(g, { kind: 'weapon', weapon: 'rifle', price: 80 }), true);
+  assert.ok(weapons().every(e => e.refund === 0));
 });
