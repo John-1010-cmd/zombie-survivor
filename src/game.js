@@ -1,5 +1,5 @@
 // src/game.js —— 战斗场景组装（DOM 层胶水，无单测）
-// 迭代 02：银币经济 + 商店建筑 + 道具数字键 + 三模式（无尽/坚守10/坚守20）+ 直升机救援 + 守门 Boss + 音效
+// 迭代 03：分维强化 / 新武器三把 / 部署物（固定火炮+围墙）/ 辅助武器 / 僵尸啃食 / 射程圈
 import { mulberry32 } from './core/rng.js';
 import { createPool } from './core/pool.js';
 import { circleHit, createSpatialHash } from './core/physics.js';
@@ -7,7 +7,7 @@ import { createCamera, updateCamera, addShake } from './core/camera.js';
 import { generateMap, MAP_SIZE } from './systems/map.js';
 import { createPlayer, updatePlayer, damagePlayer } from './entities/player.js';
 import { createZombie, updateZombie } from './entities/zombie.js';
-import { createWeapon, updateWeapon } from './entities/weapon.js';
+import { createWeapon, updateWeapon, weaponStats } from './entities/weapon.js';
 import { createProjectile, resetProjectile, updateProjectile } from './entities/projectile.js';
 import { resolveProjectileHits, explode } from './systems/combat.js';
 import { createSpawner, updateSpawner, offscreenPoint } from './systems/spawner.js';
@@ -15,22 +15,26 @@ import { createCoin, updateCoin } from './entities/coin.js';
 import { createHelicopter, updateHelicopter, renderHelicopter } from './entities/helicopter.js';
 import { createInventory, addItem, useItem } from './systems/inventory.js';
 import { catalogFor, buy } from './systems/shop.js';
+import { createAux, spawnAuxBodies, updateAuxBodies } from './entities/companions.js';
+import { createTurret, updateTurret } from './entities/turret.js';
+import { createWallRing } from './entities/wall.js';
 import { ITEMS } from './config/items.js';
 import { MODES, TIER_DURATION } from './config/difficulty.js';
-import { earlyTierBonus } from './config/economy.js';
-import { showShop } from './ui/shop.js';
 import {
   spawnParticles, updateParticles, renderParticles,
   spawnFloater, updateFloaters, renderFloaters,
 } from './entities/effects.js';
 import { ZOMBIES } from './config/zombies.js';
 import { renderHud } from './systems/hud.js';
+import { showShop } from './ui/shop.js';
 
-const MAX_PROJECTILES = 400; // spec §9 子弹上限
-const MAX_PARTICLES = 500;   // spec §9 粒子上限
-const MAX_FLOATERS = 100;    // 伤害数字上限
-const HOLDOUT10_SEGMENT = 100; // 坚守 10 分钟压缩段长（spec §5.3）
-const ITEM_DROP_TABLE = [ // 僵尸掉落道具概率（spec §7）
+const MAX_PROJECTILES = 400;
+const MAX_PARTICLES = 500;
+const MAX_FLOATERS = 100;
+const HOLDOUT10_SEGMENT = 100;
+const MAX_TURRETS = 6;   // 场上固定火炮上限（plan §3）
+const MAX_WALL_RINGS = 2; // 场上围墙组上限
+const ITEM_DROP_TABLE = [
   { id: 'medkit', chance: 0.005 },
   { id: 'magnet', chance: 0.003 },
   { id: 'bomb', chance: 0.003 },
@@ -42,7 +46,7 @@ export function createGameScene(deps) {
   const cfgFn = modeCfg.getCfg;
   const segLen = mode === 'holdout10' ? HOLDOUT10_SEGMENT : TIER_DURATION;
 
-  const rng = mulberry32((Math.random() * 2 ** 31) | 0); // DOM 层允许 Math.random 做种子
+  const rng = mulberry32((Math.random() * 2 ** 31) | 0);
   const map = generateMap(rng);
   const player = createPlayer(map.spawn.x, map.spawn.y);
   const camera = createCamera(canvas.width, canvas.height);
@@ -56,14 +60,15 @@ export function createGameScene(deps) {
   const projectiles = [];
   let aliveCount = 0;
   let activeProjectiles = 0;
-  let magnetAllUntil = -1;      // 磁铁道具：全场银币吸附截止时刻
-  let shopLatch = false;        // 关闭商店后须离开交互半径才能重开（spec §4.6）
+  let magnetAllUntil = -1;
+  let shopLatch = false;
   let shopOpen = false;
   let bossSpawned = false;
   let rescueAlerted = false;
-  let over = false;             // 本局已出结算，防重复回调
-  let lastShotSound = -1;       // 射击音节流
+  let over = false;
+  let lastShotSound = -1;
   let lastShotSoundId = '';
+  let auxSpawnedSignature = ''; // counts 变化检测（购买后重建载体）
 
   const scene = {
     update, render,
@@ -71,8 +76,7 @@ export function createGameScene(deps) {
     player,
     mode,
     duration: modeCfg.duration || 0,
-    // 武器必须经 scene.weapon 引用：换枪会重绑 game.weapon（buy），
-    // 若用闭包局部变量，开火管线将与 UI 显示脱钩（UI 换枪、实际仍用旧武器）
+    // 武器必须经 scene.weapon 引用：换枪会重绑 game.weapon（buy）
     weapon: createWeapon('pistol'),
     zombies: [],
     coins: 0,
@@ -85,7 +89,16 @@ export function createGameScene(deps) {
     rng,
     shops: map.shops,
     helicopter: null,
-    tierRemaining: segLen, // 商店目录用：当前档剩余秒数（每帧更新）
+    tierRemaining: segLen,
+    // 迭代 03 经济字段（shop.js buy 消费）
+    weaponBought: 0,        // 全局换枪计数（用户裁定）
+    itemBought: {},         // 道具各自已购次数
+    aux: createAux(),
+    turretEnhance: { damage: 0, fireRate: 0, projectiles: 0, range: 0 },
+    wallEnhance: { hp: 0 },
+    // 部署物运行时
+    turrets: [],            // 固定火炮（≤6）
+    walls: [],              // 围墙组数组的数组（≤2 组，每组 8 段）
     useItemKey,
     togglePause,
     applyEarlyTier,
@@ -95,16 +108,29 @@ export function createGameScene(deps) {
 
   function spawnProjectile(opts) {
     if (activeProjectiles >= MAX_PROJECTILES) return;
-    const p = projPool.obtain(opts);
+    // 池化复用对象可能残留旧字段，统一归一（turret/aux 弹不总带全字段）
+    const fromPlayer = opts.fromPlayer;
+    const o = {
+      aoe: 0, arc: false, chain: 0, pierce: 0, knockback: 0,
+      ...opts,
+    };
+    const p = projPool.obtain(o);
     activeProjectiles++;
     projectiles.push(p);
-    // 射击音节流：同一武器 0.12s 内不重复触发
-    const sid = scene.weapon.id === 'mg' ? 'shootMG' : 'shoot';
-    if (sid !== lastShotSoundId || scene.time - lastShotSound > 0.12) {
-      lastShotSound = scene.time;
-      lastShotSoundId = sid;
-      sound(sid);
+    // 射击音仅主武器触发且节流 0.12s
+    if (fromPlayer) {
+      const sid = scene.weapon.id === 'mg' ? 'shootMG' : 'shoot';
+      if (sid !== lastShotSoundId || scene.time - lastShotSound > 0.12) {
+        lastShotSound = scene.time;
+        lastShotSoundId = sid;
+        sound(sid);
+      }
     }
+  }
+
+  // 主武器开火入口（带射击音）：包一层标记来源
+  function playerSpawnProjectile(opts) {
+    spawnProjectile({ ...opts, fromPlayer: true });
   }
 
   function killZombie(z) {
@@ -136,17 +162,30 @@ export function createGameScene(deps) {
     onGameOver({ time: scene.time, kills: scene.kills, hp: Math.max(0, Math.ceil(player.hp)), mode, ...stats });
   }
 
-  // 数字键道具使用（不暂停）
+  // 数字键道具：1 医疗包 / 2 磁铁 / 3 炸弹 / 4 固定火炮 / 5 围墙
   function useItemKey(n) {
     if (scene.paused || over) return;
     let id = null;
     for (const it of Object.values(ITEMS)) if (it.key === n) id = it.id;
-    if (!id || !useItem(scene.inventory, id)) { sound('click'); return; }
+    if (!id) return;
+    if (id === 'turret') {
+      if (scene.turrets.length >= MAX_TURRETS || !useItem(scene.inventory, id)) { sound('click'); return; }
+      scene.turrets.push(createTurret(player.x, player.y, scene.turretEnhance));
+      spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮部署！', '#f80');
+      return;
+    }
+    if (id === 'wall') {
+      if (scene.walls.length >= MAX_WALL_RINGS || !useItem(scene.inventory, id)) { sound('click'); return; }
+      scene.walls.push(createWallRing(player.x, player.y, scene.wallEnhance));
+      spawnFloater(scene.floaters, player.x, player.y - 30, '围墙竖起！', '#99a');
+      return;
+    }
+    if (!useItem(scene.inventory, id)) { sound('click'); return; }
     if (id === 'medkit') {
       player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5);
       spawnFloater(scene.floaters, player.x, player.y - 30, '+' + Math.round(player.maxHp * 0.5), '#4d4');
     } else if (id === 'magnet') {
-      magnetAllUntil = scene.time + 2.5; // 1500px/s × 2.5s 覆盖全图最远银币
+      magnetAllUntil = scene.time + 2.5;
       spawnFloater(scene.floaters, player.x, player.y - 30, '磁铁！', '#5ef');
     } else if (id === 'bomb') {
       explode(player.x, player.y, 350, 250, scene.zombies, z => hitZombie(z, 250), killZombie);
@@ -156,7 +195,6 @@ export function createGameScene(deps) {
     }
   }
 
-  // Esc：商店打开时先关商店，否则切换暂停菜单（由 main.js 的 overlay 承载）
   function togglePause() {
     if (over) return;
     if (shopOpen) { closeShop(); return; }
@@ -164,19 +202,20 @@ export function createGameScene(deps) {
     if (!scene.paused) sound('click');
   }
 
-  // 商店：进入交互半径唤出（暂停），离开半径后才能重开
   function openShop() {
     shopOpen = true;
     scene.paused = true;
     sound('click');
-    const render = () => showShop(document.getElementById('shop'), scene, {
+    const render = () => showShopPanel();
+    render();
+  }
+
+  function showShopPanel() {
+    // 延迟 import 避免 DOM 模块进入纯逻辑链？——game.js 本身是 DOM 层，直接顶部 import 即可
+    showShop(document.getElementById('shop'), scene, {
       onBuy: entry => {
-        if (buy(scene, entry)) {
-          sound('buy');
-          render(); // 重新渲染目录与余额
-        } else {
-          sound('click');
-        }
+        if (buy(scene, entry)) { sound('buy'); showShopPanel(); }
+        else sound('click');
       },
       onEarlyTier: bonus => {
         scene.applyEarlyTier(bonus);
@@ -185,17 +224,15 @@ export function createGameScene(deps) {
       },
       onClose: () => closeShop(),
     });
-    render();
   }
 
   function closeShop() {
     shopOpen = false;
-    shopLatch = true; // 须离开交互半径才能重开
+    shopLatch = true;
     document.getElementById('shop').classList.add('hidden');
     scene.paused = false;
   }
 
-  // 提前难度：时间轴快进到下一档起点，发放奖励银币（包围潮由 spawner 档位切换自然触发）
   function applyEarlyTier(bonus) {
     const cfg = cfgFn(scene.time);
     scene.time = cfg.tier * segLen;
@@ -208,16 +245,18 @@ export function createGameScene(deps) {
     scene.time += dt;
 
     updatePlayer(player, input.state, map.obstacles, MAP_SIZE, dt);
-    updateWeapon(scene.weapon, player, scene.zombies, spawnProjectile, rng, dt);
+    updateWeapon(scene.weapon, player, scene.zombies, playerSpawnProjectile, rng, dt);
 
-    // 当前档剩余秒数（商店目录/提前难度奖励）
     scene.tierRemaining = (cfgFn(scene.time).tier) * segLen - scene.time;
 
-    // 刷怪：坚守高峰（surgeFrom 起）预算 ×1.5
+    // 辅助武器：counts 变化（购买）后重建载体；每帧运动+开火
+    const sig = Object.values(scene.aux.counts).join(',');
+    if (sig !== auxSpawnedSignature) { auxSpawnedSignature = sig; spawnAuxBodies(scene.aux); }
+    updateAuxBodies(scene.aux, player, scene.zombies, spawnProjectile, rng, dt);
+
     const budgetMult = modeCfg.surgeFrom && scene.time >= modeCfg.surgeFrom ? 1.5 : 1;
     aliveCount += updateSpawner(spawner, scene.time, camera, MAP_SIZE, scene.zombies, aliveCount, rng, dt, budgetMult, cfgFn);
 
-    // 守门 Boss 注入（坚守模式，bossAt 时刻一次）
     if (modeCfg.bossAt && !bossSpawned && scene.time >= modeCfg.bossAt) {
       bossSpawned = true;
       const p = offscreenPoint(camera, MAP_SIZE, rng);
@@ -228,7 +267,6 @@ export function createGameScene(deps) {
       spawnFloater(scene.floaters, player.x, player.y - 50, '守门 Boss 出现！', '#f55');
     }
 
-    // 坚守：剩 60s 警报；归零生成直升机
     if (modeCfg.duration) {
       const remain = modeCfg.duration - scene.time;
       if (!rescueAlerted && remain <= 60 && remain > 0) {
@@ -243,8 +281,15 @@ export function createGameScene(deps) {
       }
     }
 
+    // 固定火炮自动开火
+    for (const t of scene.turrets) updateTurret(t, scene.zombies, spawnProjectile, rng, dt);
+
+    // 僵尸：250px 内优先啃部署物，否则追玩家
+    const edibles = [];
+    for (const t of scene.turrets) if (t.alive) edibles.push(t);
+    for (const ring of scene.walls) for (const seg of ring) if (seg.alive) edibles.push(seg);
     for (const z of scene.zombies) {
-      if (z.alive) updateZombie(z, player, map.obstacles, dt);
+      if (z.alive) updateZombie(z, player, map.obstacles, dt, edibles);
     }
     for (const p of projectiles) {
       if (p.alive) updateProjectile(p, dt);
@@ -255,9 +300,9 @@ export function createGameScene(deps) {
 
     resolveProjectileHits(projectiles, hash, map.obstacles,
       killZombie,
-      (z, p) => hitZombie(z, p.damage));
+      (z, p) => hitZombie(z, p.damage),
+      scene.zombies); // allZombies：tesla 链电/aoe 爆炸遍历用
 
-    // 接触伤害：命中才扣血，扣血即震屏 + 受伤音
     for (const z of scene.zombies) {
       if (!z.alive) continue;
       if (circleHit(player.x, player.y, player.r, z.x, z.y, z.r) &&
@@ -268,7 +313,6 @@ export function createGameScene(deps) {
       }
     }
 
-    // 银币：磁吸/全场吸附拾取
     const magnetAll = scene.time < magnetAllUntil;
     for (let i = scene.coinsOnGround.length - 1; i >= 0; i--) {
       const c = scene.coinsOnGround[i];
@@ -279,13 +323,11 @@ export function createGameScene(deps) {
       sound('coin');
     }
 
-    // 直升机登机判定
     if (scene.helicopter && updateHelicopter(scene.helicopter, player, dt) === 'victory') {
       gameOver({ cleared: true });
       return;
     }
 
-    // 商店：进入交互半径唤出；离开半径解除重开锁
     let inShopRange = false;
     for (const s of map.shops) {
       if (Math.hypot(player.x - s.x, player.y - s.y) < s.interactR) { inShopRange = true; break; }
@@ -293,7 +335,7 @@ export function createGameScene(deps) {
     if (shopLatch && !inShopRange) shopLatch = false;
     if (!shopOpen && !shopLatch && inShopRange) openShop();
 
-    // 死僵尸与死弹道 swap-remove 压缩数组
+    // 死僵尸 swap-remove
     for (let i = scene.zombies.length - 1; i >= 0; i--) {
       if (!scene.zombies[i].alive) {
         scene.zombies[i] = scene.zombies[scene.zombies.length - 1];
@@ -301,6 +343,7 @@ export function createGameScene(deps) {
         aliveCount--;
       }
     }
+    // 死弹道回收
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
       if (!p.alive) {
@@ -309,6 +352,23 @@ export function createGameScene(deps) {
         projPool.release(p);
         activeProjectiles--;
       }
+    }
+    // 毁损部署物清理：火炮逐个删；围墙组全灭删组
+    for (let i = scene.turrets.length - 1; i >= 0; i--) {
+      if (!scene.turrets[i].alive) {
+        scene.turrets[i] = scene.turrets[scene.turrets.length - 1];
+        scene.turrets.pop();
+      }
+    }
+    for (let i = scene.walls.length - 1; i >= 0; i--) {
+      const ring = scene.walls[i];
+      for (let j = ring.length - 1; j >= 0; j--) {
+        if (!ring[j].alive) {
+          ring[j] = ring[ring.length - 1];
+          ring.pop();
+        }
+      }
+      if (ring.length === 0) scene.walls.splice(i, 1);
     }
 
     updateCamera(camera, player, MAP_SIZE, rng, dt);
@@ -338,7 +398,7 @@ export function createGameScene(deps) {
       }
     }
 
-    // 商店建筑：土黄色圆顶 + "店"字（不阻挡移动/弹道，spec §4.5）
+    // 商店建筑
     for (const s of map.shops) {
       ctx.fillStyle = '#7a5c3e';
       ctx.beginPath();
@@ -353,7 +413,6 @@ export function createGameScene(deps) {
       ctx.font = '28px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('店', s.x, s.y + 10);
-      // 交互半径提示（玩家靠近时）
       if (Math.hypot(player.x - s.x, player.y - s.y) < s.interactR + 120) {
         ctx.fillStyle = 'rgba(255,215,94,.6)';
         ctx.font = '16px "Microsoft YaHei", sans-serif';
@@ -361,7 +420,7 @@ export function createGameScene(deps) {
       }
     }
 
-    // 撤离点提示（坚守模式警报后）
+    // 撤离点提示
     if (modeCfg.duration && rescueAlerted && !scene.helicopter) {
       ctx.strokeStyle = 'rgba(94,239,255,.5)';
       ctx.lineWidth = 3;
@@ -372,7 +431,17 @@ export function createGameScene(deps) {
       ctx.setLineDash([]);
     }
 
-    // 银币（金色菱形）
+    // 玩家脚下射程圈（反馈 #5：让攻击范围可感知）
+    const range = weaponStats(scene.weapon).range;
+    ctx.fillStyle = 'rgba(255,224,102,.05)';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, range, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,224,102,.15)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 银币
     ctx.fillStyle = '#ffd75e';
     for (const c of scene.coinsOnGround) {
       const s = 3 + Math.min(c.value, 5);
@@ -385,7 +454,46 @@ export function createGameScene(deps) {
       ctx.fill();
     }
 
-    // 僵尸：配置颜色圆 + 受击闪白 + 头顶血条
+    // 围墙：石灰色段圆 + 耐久弧
+    for (const ring of scene.walls) {
+      for (const seg of ring) {
+        ctx.fillStyle = '#8a8a92';
+        ctx.beginPath();
+        ctx.arc(seg.x, seg.y, seg.r, 0, Math.PI * 2);
+        ctx.fill();
+        if (seg.hp < seg.maxHp) {
+          ctx.strokeStyle = '#5eff8a';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(seg.x, seg.y, seg.r + 4, -Math.PI / 2, -Math.PI / 2 + (seg.hp / seg.maxHp) * Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // 固定火炮：深灰炮座 + 炮管朝向 + 耐久环
+    for (const t of scene.turrets) {
+      ctx.fillStyle = '#555';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(t.x, t.y);
+      const aim = t.weapon.lastAim ?? 0;
+      ctx.lineTo(t.x + Math.cos(aim) * t.r * 1.4, t.y + Math.sin(aim) * t.r * 1.4);
+      ctx.stroke();
+      if (t.hp < t.maxHp) {
+        ctx.strokeStyle = '#f80';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, t.r + 5, -Math.PI / 2, -Math.PI / 2 + (t.hp / t.maxHp) * Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // 僵尸
     for (const z of scene.zombies) {
       const c = ZOMBIES[z.type];
       ctx.fillStyle = c.color;
@@ -410,10 +518,20 @@ export function createGameScene(deps) {
       }
     }
 
-    // 直升机（在僵尸之上、玩家之下）
+    // 辅助武器载体：drone 青、gunner 橙、sniper 蓝（小三角）
+    for (const b of scene.aux.bodies) {
+      ctx.fillStyle = b.kind === 'drone' ? '#5ef' : b.kind === 'gunner' ? '#f80' : '#48f';
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y - 7);
+      ctx.lineTo(b.x + 6, b.y + 5);
+      ctx.lineTo(b.x - 6, b.y + 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     if (scene.helicopter) renderHelicopter(ctx, scene.helicopter);
 
-    // 玩家：白圆 + facing 方向短线，无敌帧半透明闪烁
+    // 玩家
     if (player.invuln > 0) ctx.globalAlpha = 0.45 + 0.35 * Math.sin(scene.time * 24);
     ctx.fillStyle = '#fff';
     ctx.beginPath();
@@ -427,10 +545,10 @@ export function createGameScene(deps) {
     ctx.lineTo(player.x + Math.cos(player.facing) * player.r, player.y + Math.sin(player.facing) * player.r);
     ctx.stroke();
 
-    // 弹道：#ffe066 长 8 的线段
-    ctx.strokeStyle = '#ffe066';
-    ctx.lineWidth = 2;
+    // 弹道：常规黄 / aoe 橙 / 链电青
     for (const p of projectiles) {
+      ctx.strokeStyle = p.aoe > 0 ? '#f80' : p.chain > 0 ? '#5ef' : '#ffe066';
+      ctx.lineWidth = p.aoe > 0 ? 3 : 2;
       const dx = Math.cos(p.angle) * 4, dy = Math.sin(p.angle) * 4;
       ctx.beginPath();
       ctx.moveTo(p.x - dx, p.y - dy);
@@ -444,8 +562,9 @@ export function createGameScene(deps) {
     ctx.restore();
     ctx.textAlign = 'left';
 
-    renderHud(ctx, scene); // 屏幕空间绘制，必须在 camera 变换 ctx.restore() 之后调用
+    renderHud(ctx, scene);
   }
 
   return scene;
 }
+

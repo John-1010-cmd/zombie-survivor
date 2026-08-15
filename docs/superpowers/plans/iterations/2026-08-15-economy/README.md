@@ -35,13 +35,20 @@ MVP 终验（2026-08-15）后的设计漂移轮（spec 中称「1.5 期」）：
 
 | 编队 | 范围 | 状态 |
 |---|---|---|
-| A 经济 | `config/economy.js`、`config/items.js`、`systems/inventory.js`、`systems/shop.js` | ⬜ |
-| B 世界 | `entities/coin.js`、`systems/map.js`（商店）、`entities/helicopter.js`、`systems/combat.js`（explode） | ⬜ |
-| C 难度 | `config/difficulty.js`（重写）、`config/zombies.js`+boss、`entities/zombie.js`、`systems/spawner.js` | ⬜ |
-| D 音频 | CC0 素材下载 + `assets/audio/CREDITS.md` + `core/audio.js`（重写） | ⬜ |
-| E 界面 | `core/storage.js`（三模式+设置）、`core/input.js`（回调）、`ui/pause.js`、`ui/menu.js`、`ui/gameover.js`、`systems/hud.js` | ⬜ |
-| 集成 | `game.js`、`ui/shop.js`、`main.js`、`index.html`、`style.css`、删除旧文件、全量回归 | ⬜ 主会话 |
+| A 经济 | `config/economy.js`、`config/items.js`、`systems/inventory.js`、`systems/shop.js` | ✅ 19/19 |
+| B 世界 | `entities/coin.js`、`systems/map.js`（商店）、`entities/helicopter.js`、`systems/combat.js`（explode） | ✅ 32/32 |
+| C 难度 | `config/difficulty.js`（重写）、`config/zombies.js`+boss、`entities/zombie.js`、`systems/spawner.js` | ✅ 32/32 |
+| D 音频 | CC0 素材下载 + `assets/audio/CREDITS.md` + `core/audio.js`（重写） | ✅ 9 素材全 CC0 |
+| E 界面 | `core/storage.js`（三模式+设置）、`core/input.js`（回调）、`ui/pause.js`、`ui/menu.js`、`ui/gameover.js`、`systems/hud.js` | ✅ 20/20 |
+| 集成 | `game.js`、`ui/shop.js`、`main.js`、`index.html`、`style.css`、删除旧文件、全量回归 | ✅ 143/143 + 冒烟 17/17 |
 
-## 6. 验收
+## 6. 验收记录（2026-08-15）
 
-人工验收清单见 `plan.md` 末节；通过后更新 §5 状态为 ✅ 并在本节归档（`npm test` 结果 + 终验记录）。
+- **自动化**：`npm test` → 143 用例全 PASS（19 个测试文件：原 93 中 progression/levelup/xpGem 三文件随四选一移除，新增 economy/inventory/shop/coin/helicopter 等）
+- **无头冒烟**（Node 模拟全链路，17/17）：无尽死亡结算（含字段）、医疗包回血/空库存、磁铁全场吸附、炸弹消耗、提前难度时间快进+奖励、坚守 600s→警报→直升机→登机胜利、Esc 暂停恢复
+- **实施中发现并修复**：
+  - `MODES.holdout10.getCfg` 契约误指无尽表，按 spec §5.3 改指 `getHoldout10Config`（spawner 相应增 `cfgFn` 注入参数）
+  - 磁铁吸附窗口 1.5s@1200px/s 覆盖不了全图对角，改 2.5s@1500px/s（coin.test 同步）
+  - 集成期银币拾取一处笔误（`scene.coins[i]`）当场修正
+- **提交**：37ad009 / c33405e / 95515a2 / 69ee147 / 94592bf / c33613b（六编队各一 + 集成）
+- **待人工浏览器终验**：音效实际听感、商店面板交互手感、直升机登机动画、帧率（清单见 `plan.md` 末节）

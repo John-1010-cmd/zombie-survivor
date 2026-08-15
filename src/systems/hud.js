@@ -1,7 +1,8 @@
 // src/systems/hud.js —— HUD 渲染（屏幕空间）+ formatTime 纯函数。
 // renderHud 为 DOM（canvas）函数，不单测；formatTime 可单测。
-import { WEAPONS } from '../config/weapons.js';
+import { WEAPONS, ENHANCE_STATS, STAT_LABEL } from '../config/weapons.js';
 import { ITEMS, ITEM_IDS } from '../config/items.js';
+import { AUX_CONFIG } from '../entities/companions.js';
 
 export function formatTime(sec) {
   const m = Math.floor(sec / 60);
@@ -64,7 +65,14 @@ export function renderHud(ctx, game) {
     sx += slotW + gap;
   }
 
-  // 道具栏下方：武器名 + Lv
+  // 道具栏下方：武器名 + 分维等级（迭代 03：level 字段已删除）+ 辅助数量
   ctx.fillStyle = '#fff';
-  ctx.fillText(WEAPONS[game.weapon.id].name + ' · Lv' + game.weapon.level, mx, H - 8);
+  const dims = ENHANCE_STATS.map(s => `${STAT_LABEL[s].split(' ')[0]}${game.weapon.enhance[s]}`).join(' ');
+  let info = WEAPONS[game.weapon.id].name + ' · ' + dims;
+  const aux = game.aux;
+  if (aux && Object.values(aux.counts).some(n => n > 0)) {
+    info += ' · 辅助 ' + Object.entries(aux.counts).filter(([, n]) => n > 0)
+      .map(([k, n]) => `${AUX_CONFIG[k].name}×${n}`).join(' ');
+  }
+  ctx.fillText(info, mx, H - 8);
 }

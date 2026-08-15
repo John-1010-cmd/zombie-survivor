@@ -18,20 +18,22 @@ button { font-size: 20px; padding: 10px 32px; cursor: pointer; }
 .pause-row input[type="range"] { width: 220px; }
 .pause-buttons { display: flex; gap: 24px; margin-top: 12px; }
 
-/* 商店（ui/shop.js） */
-#shop { justify-content: flex-start; padding-top: 40px; overflow-y: auto; }
+/* 商店（ui/shop.js）—— 迭代 03 分组布局 */
+#shop { justify-content: flex-start; padding-top: 24px; overflow-y: auto; }
 .shop-head h2 { margin: 0 0 4px; color: #ffd75e; }
 .shop-coins { margin: 0; font-size: 20px; color: #ffd75e; }
-.build { margin: 8px 0 4px; text-align: center; color: #bbb; }
+.build { margin: 6px 0 2px; text-align: center; color: #bbb; }
 .build-head { font-size: 18px; color: #fff; }
 .build-stat { font-size: 13px; }
-.shop-list { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center;
-  max-width: 900px; }
-.shop-item { width: 200px; padding: 12px; background: #222; border: 2px solid #555;
+.shop-groups { display: flex; flex-direction: column; gap: 14px; max-width: 1060px; }
+.shop-row-title { margin: 0 0 6px; font-size: 15px; color: #9fd0ff;
+  border-left: 4px solid #9fd0ff; padding-left: 8px; }
+.shop-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.shop-item { width: 168px; padding: 8px 10px; background: #222; border: 2px solid #555;
   border-radius: 8px; cursor: pointer; text-align: center; }
 .shop-item:hover { border-color: #ffd75e; }
-.shop-item h3 { margin: 0 0 6px; color: #ffd75e; font-size: 17px; }
-.shop-item p { margin: 4px 0; font-size: 13px; color: #ccc; }
+.shop-item h4 { margin: 0 0 4px; color: #ffd75e; font-size: 15px; }
+.shop-item p { margin: 2px 0; font-size: 12px; color: #ccc; }
 .shop-item .shop-price { color: #ffd75e; font-weight: bold; }
 .shop-item.disabled { opacity: .45; cursor: not-allowed; }
 .shop-item.disabled:hover { border-color: #555; }
