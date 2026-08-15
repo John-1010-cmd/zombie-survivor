@@ -35,8 +35,8 @@ const MAX_PARTICLES = 500;
 const MAX_FLOATERS = 100;
 const MAX_EFFECTS = 200;    // 爆环/闪电特效上限（迭代 05：随弹道叠加）
 const HOLDOUT10_SEGMENT = 100;
-const MAX_TURRETS = 6;   // 场上固定火炮上限（plan §3）
-const MAX_WALL_SEGMENTS = 16; // 场上围墙单段上限（迭代 05）
+const MAX_TURRETS = 30;  // 场上固定火炮上限（迭代 08：6→30，性能安全阀；用户裁定调大）
+// 围墙无上限（迭代 08：用户裁定取消上限）
 const ITEM_DROP_TABLE = [
   { id: 'medkit', chance: 0.005 },
   { id: 'magnet', chance: 0.003 },
@@ -202,7 +202,7 @@ export function createGameScene(deps) {
     if (!id) return;
     if (id === 'turret') {
       if (scene.turrets.length >= MAX_TURRETS) {
-        spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮已达上限（6）', '#f88');
+        spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮已达上限（30）', '#f88');
         sound('click'); return;
       }
       if (!useItem(scene.inventory, id)) { sound('click'); return; }
@@ -211,10 +211,7 @@ export function createGameScene(deps) {
       return;
     }
     if (id === 'wall') {
-      if (scene.walls.length >= MAX_WALL_SEGMENTS) {
-        spawnFloater(scene.floaters, player.x, player.y - 30, '围墙已达上限（16）', '#f88');
-        sound('click'); return;
-      }
+      // 围墙无上限（迭代 08）
       if (!useItem(scene.inventory, id)) { sound('click'); return; }
       scene.walls.push(createWallSegment(player.x, player.y, scene.wallEnhance));
       spawnFloater(scene.floaters, player.x, player.y - 30, '围墙竖起！', '#99a');
