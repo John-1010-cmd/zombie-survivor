@@ -1,4 +1,5 @@
 // src/config/zombies.js
+// coin 为基值：实际掉落 = 基值 × min(4, 1 + 0.25×(档位-1))，递增在 createZombie（entities/zombie.js）
 export const ZOMBIES = {
   normal: { id: 'normal', name: '普通僵尸', hp: 30, speed: 70, damage: 8, coin: 1,
     radius: 14, color: '#6a8f6a', knockbackResist: 0, cost: 1 },

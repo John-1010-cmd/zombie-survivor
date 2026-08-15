@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   ENHANCE_BASE, ENHANCE_GROWTH, WEAPON_SWAP_PRICE,
   ITEM_PRICES, EARLY_BONUS_PER_30S, enhancePrice, earlyTierBonus,
+  weaponPrice, AUX_PRICES, AUX_MAX, DEPLOY_PRICES, WEAPON_BASE_PRICE,
 } from '../src/config/economy.js';
 
 test('经济常量正确', () => {
@@ -11,7 +12,25 @@ test('经济常量正确', () => {
   assert.equal(ENHANCE_GROWTH, 1.5);
   assert.equal(WEAPON_SWAP_PRICE, 80);
   assert.deepEqual(ITEM_PRICES, { medkit: 30, magnet: 25, bomb: 50 });
+  assert.deepEqual(DEPLOY_PRICES, { turret: 120, wall: 100 });
+  assert.deepEqual(AUX_PRICES, { drone: 60, gunner: 90, sniper: 120 });
+  assert.deepEqual(AUX_MAX, { drone: 3, gunner: 3, sniper: 2 });
+  assert.deepEqual(WEAPON_BASE_PRICE, { pistol: 40, rifle: 80, mg: 80, rocket: 150, grenade: 200, tesla: 250 });
   assert.equal(EARLY_BONUS_PER_30S, 25);
+});
+
+test('weaponPrice：第 1 把按基价，此后 ×1.4/把并 round5', () => {
+  assert.equal(weaponPrice(80, 0), 80);   // 第 1 把 = 基价
+  assert.equal(weaponPrice(80, 1), 110);  // 80×1.4=112 → 110
+  assert.equal(weaponPrice(80, 2), 155);  // 80×1.96=156.8 → 155
+  assert.equal(weaponPrice(40, 0), 40);   // 手枪回购基价
+  assert.equal(weaponPrice(40, 1), 55);   // 40×1.4=56 → 55
+  assert.equal(weaponPrice(250, 3), 685); // 250×2.744=686 → 685
+  // 所有结果均为 5 的倍数
+  for (let i = 0; i <= 10; i++) {
+    assert.equal(weaponPrice(80, i) % 5, 0);
+    assert.equal(weaponPrice(40, i) % 5, 0);
+  }
 });
 
 test('enhancePrice：40×1.5^n 四舍五入到 5 的倍数', () => {
