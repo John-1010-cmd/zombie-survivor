@@ -1,0 +1,14 @@
+/* style.css */
+html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
+#game { display: block; margin: 0 auto; background: #1a2418; }
+.overlay { position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+  background: rgba(0,0,0,.72); color: #eee;
+  font-family: "Microsoft YaHei", system-ui, sans-serif; }
+.hidden { display: none; }
+button { font-size: 20px; padding: 10px 32px; cursor: pointer; }
+.cards { display: flex; gap: 16px; }
+.card { width: 180px; padding: 16px; background: #222; border: 2px solid #555;
+  border-radius: 8px; cursor: pointer; text-align: center; }
+.card:hover { border-color: #ffd75e; }
+.card h3 { margin: 0 0 8px; color: #ffd75e; }
