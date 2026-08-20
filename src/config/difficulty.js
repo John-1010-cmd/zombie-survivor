@@ -5,16 +5,18 @@ export const GRACE_PERIOD = 30;
 export const MAX_ZOMBIES = 400;
 export const SURGE_CAP = 48;
 
-// 无尽模式难度阶梯（预算 ×1.5，档 3 取整为 7；倍率/权重与第 1 期一致）
+// 无尽模式难度阶梯（预算 ×1.5，档 3 取整为 7）
+// hpMult/speedMult/unlocks 已退役：数值增长走 systems/scaling.js（设计 §2.1），
+// “某档起出现某怪”直接写进该档 weights（unlocks 原为零读取死字段）。
 export const DIFFICULTY_TIERS = [
-  { tier: 1, budgetPerSec: 3,   weights: { normal: 1 },                          hpMult: 1,   speedMult: 1,    unlocks: ['normal'] },
-  { tier: 2, budgetPerSec: 4.5, weights: { normal: 0.7, fast: 0.3 },             hpMult: 1.5, speedMult: 1,    unlocks: ['fast'] },
-  { tier: 3, budgetPerSec: 7,   weights: { normal: 0.6, fast: 0.4 },             hpMult: 2.2, speedMult: 1.05, unlocks: [] },
-  { tier: 4, budgetPerSec: 9,   weights: { normal: 0.5, fast: 0.3, tank: 0.2 },  hpMult: 3.2, speedMult: 1.05, unlocks: ['tank'] },
-  { tier: 5, budgetPerSec: 12,  weights: { normal: 0.4, fast: 0.35, tank: 0.25 }, hpMult: 4.5, speedMult: 1.10, unlocks: [] },
-  { tier: 6, budgetPerSec: 15,  weights: { normal: 0.4, fast: 0.35, tank: 0.25 }, hpMult: 6,   speedMult: 1.10, unlocks: [] },
-  { tier: 7, budgetPerSec: 18,  weights: { normal: 0.35, fast: 0.35, tank: 0.3 }, hpMult: 8,   speedMult: 1.10, unlocks: [] },
-  { tier: 8, budgetPerSec: 21,  weights: { normal: 0.35, fast: 0.35, tank: 0.3 }, hpMult: 10,  speedMult: 1.15, unlocks: [] },
+  { tier: 1, budgetPerSec: 3,   weights: { normal: 1 } },
+  { tier: 2, budgetPerSec: 4.5, weights: { normal: 0.7, fast: 0.3 } },
+  { tier: 3, budgetPerSec: 7,   weights: { normal: 0.6, fast: 0.4 } },
+  { tier: 4, budgetPerSec: 9,   weights: { normal: 0.5, fast: 0.3, tank: 0.2 } },
+  { tier: 5, budgetPerSec: 12,  weights: { normal: 0.35, fast: 0.3, tank: 0.25, exploder: 0.1 } },
+  { tier: 6, budgetPerSec: 15,  weights: { normal: 0.35, fast: 0.3, tank: 0.25, exploder: 0.1 } },
+  { tier: 7, budgetPerSec: 18,  weights: { normal: 0.35, fast: 0.3, tank: 0.25, exploder: 0.1 } },
+  { tier: 8, budgetPerSec: 21,  weights: { normal: 0.3, fast: 0.3, tank: 0.25, exploder: 0.15 } },
 ];
 
 export function getTier(timeSec) {
@@ -33,12 +35,10 @@ export function tierStartTime(tier) {
   return (tier - 1) * TIER_DURATION;
 }
 
-// 坚守 10 分钟：6 段 × 100s，第 n 段取无尽档 n 的数值
+// 坚守 10 分钟：6 段 × 100s，第 n 段取无尽档 n 的数值（weights/budgetPerSec）
 const HOLDOUT10_SEGMENT = 100;
 export const HOLDOUT10_TIERS = DIFFICULTY_TIERS.slice(0, 6).map((t, i) => ({
   tier: i + 1,
-  hpMult: t.hpMult,
-  speedMult: t.speedMult,
   weights: t.weights,
   budgetPerSec: t.budgetPerSec,
 }));

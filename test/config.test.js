@@ -2,7 +2,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WEAPONS, WEAPON_MAX_LEVEL, ENHANCE_STATS, STAT_LABEL } from '../src/config/weapons.js';
-import { ZOMBIES, MAX_ZOMBIE_R } from '../src/config/zombies.js';
 import {
   DIFFICULTY_TIERS, getTier, getTierConfig, TIER_DURATION, STAT_CAP_TIER,
   GRACE_PERIOD, MAX_ZOMBIES, SURGE_CAP, tierStartTime,
@@ -26,30 +25,6 @@ test('增强维度常量一致', () => {
   for (const s of ENHANCE_STATS) assert.ok(STAT_LABEL[s]);
 });
 
-test('僵尸字段完整（xp 已更名 coin），权重引用的类型都存在', () => {
-  for (const z of Object.values(ZOMBIES)) {
-    for (const f of ['hp','speed','damage','coin','radius','cost']) assert.ok(z[f] > 0);
-    assert.ok(z.knockbackResist >= 0 && z.knockbackResist < 1);
-    assert.ok(!('xp' in z), `${z.id} 不应再带 xp 字段`);
-  }
-  for (const t of DIFFICULTY_TIERS)
-    for (const id of Object.keys(t.weights)) assert.ok(ZOMBIES[id], `档 ${t.tier} 引用未知僵尸 ${id}`);
-  assert.ok(MAX_ZOMBIE_R >= 41); // 不小于守门 Boss 半径
-});
-
-test('三基础僵尸银币面值 1/1/5', () => {
-  assert.equal(ZOMBIES.normal.coin, 1);
-  assert.equal(ZOMBIES.fast.coin, 1);
-  assert.equal(ZOMBIES.tank.coin, 5);
-});
-
-test('守门 Boss 配置与契约一致', () => {
-  assert.deepEqual(ZOMBIES.boss, {
-    id: 'boss', name: '守门Boss', hp: 7040, speed: 20, damage: 40,
-    coin: 50, radius: 41, color: '#7a2f2f', knockbackResist: 0.95, cost: 999,
-  });
-});
-
 test('难度常量与档位边界', () => {
   assert.equal(TIER_DURATION, 180);
   assert.equal(STAT_CAP_TIER, 8);
@@ -62,16 +37,22 @@ test('难度常量与档位边界', () => {
   assert.equal(getTier(TIER_DURATION * 8), 9);
 });
 
-test('预算表 ×1.5：档 1–8 依次 3/4.5/7/9/12/15/18/21，倍率/权重与第 1 期一致', () => {
+test('预算表 ×1.5：档 1–8 依次 3/4.5/7/9/12/15/18/21；hpMult/speedMult/unlocks 已退役', () => {
   assert.deepEqual(DIFFICULTY_TIERS.map(t => t.budgetPerSec), [3, 4.5, 7, 9, 12, 15, 18, 21]);
-  assert.deepEqual(DIFFICULTY_TIERS.map(t => t.hpMult), [1, 1.5, 2.2, 3.2, 4.5, 6, 8, 10]);
-  assert.deepEqual(DIFFICULTY_TIERS.map(t => t.speedMult), [1, 1, 1.05, 1.05, 1.1, 1.1, 1.1, 1.15]);
   assert.deepEqual(DIFFICULTY_TIERS[0].weights, { normal: 1 });
   assert.deepEqual(DIFFICULTY_TIERS[3].weights, { normal: 0.5, fast: 0.3, tank: 0.2 });
-  assert.deepEqual(DIFFICULTY_TIERS[7].weights, { normal: 0.35, fast: 0.35, tank: 0.3 });
+  for (const t of DIFFICULTY_TIERS) {
+    assert.ok(!('hpMult' in t), 'hpMult 已退役');
+    assert.ok(!('speedMult' in t), 'speedMult 已退役');
+    assert.ok(!('unlocks' in t), 'unlocks 已退役（死字段）');
+  }
+  // 无尽档 5 起引入自爆（设计 §4.3）
+  assert.deepEqual(DIFFICULTY_TIERS[4].weights, { normal: 0.35, fast: 0.3, tank: 0.25, exploder: 0.1 });
+  assert.deepEqual(DIFFICULTY_TIERS[6].weights, { normal: 0.35, fast: 0.3, tank: 0.25, exploder: 0.1 });
+  assert.deepEqual(DIFFICULTY_TIERS[7].weights, { normal: 0.3, fast: 0.3, tank: 0.25, exploder: 0.15 });
 });
 
-test('档 9+：预算 = 档 8 + 4.5×(t-8)，hp/speed 封顶', () => {
+test('档 9+：预算 = 档 8 + 4.5×(t-8)', () => {
   const cap = getTierConfig(TIER_DURATION * (STAT_CAP_TIER - 1)); // 档 8
   const t9 = getTierConfig(TIER_DURATION * 8);   // 档 9 起点
   const t10 = getTierConfig(TIER_DURATION * 9);
@@ -79,10 +60,6 @@ test('档 9+：预算 = 档 8 + 4.5×(t-8)，hp/speed 封顶', () => {
   assert.equal(t9.budgetPerSec, cap.budgetPerSec + 4.5);
   assert.equal(t10.budgetPerSec, cap.budgetPerSec + 9);
   assert.equal(t12.budgetPerSec, cap.budgetPerSec + 18);
-  assert.equal(t9.hpMult, cap.hpMult);      // 数值不再增长
-  assert.equal(t9.speedMult, cap.speedMult);
-  assert.equal(t12.hpMult, cap.hpMult);
-  assert.equal(t12.speedMult, cap.speedMult);
 });
 
 test('预算随档单调不减', () => {
@@ -106,12 +83,9 @@ test('HOLDOUT10_TIERS：6 段、每段 100s，第 n 段取值同无尽档 n', ()
   for (let n = 1; n <= 6; n++) {
     const h = HOLDOUT10_TIERS[n - 1];
     const e = DIFFICULTY_TIERS[n - 1];
-    assert.equal(h.hpMult, e.hpMult, `段 ${n} hpMult`);
-    assert.equal(h.speedMult, e.speedMult, `段 ${n} speedMult`);
     assert.deepEqual(h.weights, e.weights, `段 ${n} weights`);
     assert.equal(h.budgetPerSec, e.budgetPerSec, `段 ${n} budgetPerSec`);
     const cfg = getHoldout10Config((n - 1) * 100);
-    assert.equal(cfg.hpMult, e.hpMult, `段 ${n} config hpMult`);
     assert.equal(cfg.budgetPerSec, e.budgetPerSec, `段 ${n} config budgetPerSec`);
   }
 });
@@ -119,8 +93,6 @@ test('HOLDOUT10_TIERS：6 段、每段 100s，第 n 段取值同无尽档 n', ()
 test('HOLDOUT10 越界段：数值沿用第 6 段，仅预算 +4.5/段（与无尽 9+ 同构）', () => {
   const seg6 = HOLDOUT10_TIERS[5];
   const cfg = getHoldout10Config(600); // 段 7（越表，仅登机窗口可能出现）
-  assert.equal(cfg.hpMult, seg6.hpMult);
-  assert.equal(cfg.speedMult, seg6.speedMult);
   assert.deepEqual(cfg.weights, seg6.weights);
   assert.equal(cfg.budgetPerSec, seg6.budgetPerSec + 4.5);
 });
