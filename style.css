@@ -52,3 +52,8 @@ button { font-size: 20px; padding: 10px 32px; cursor: pointer; }
   border-radius: 8px; cursor: pointer; text-align: center; }
 .card:hover { border-color: #ffd75e; }
 .card h3 { margin: 0 0 8px; color: #ffd75e; }
+
+/* FPS 常驻读数（ui/dev.js，任务12返修）：右上角小字，pointer-events 穿透，默认 hidden */
+#dev-fps-fixed { position: fixed; top: 8px; right: 12px; padding: 2px 8px;
+  background: rgba(0,0,0,.5); color: #9fd0ff; border-radius: 4px;
+  font: 13px/1.4 monospace; pointer-events: none; }

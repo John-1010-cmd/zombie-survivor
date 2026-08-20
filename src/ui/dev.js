@@ -3,18 +3,29 @@
 // 加银币/放置僵尸的实际逻辑在 game.js（devAddCoins/devSpawnZombie），本文件只做展示与回调。
 import { MONSTERS, playableMonsters } from '../config/bestiary/monsters.js';
 
-// FPS 采样为模块级单例：showDev 每次打开都 replaceChildren 重建 DOM，
-// 若在函数内启动 rAF 会逐次叠加循环；此处全局只跑一条 fpsTick，显示元素随每次打开重绑。
+// FPS 常驻读数（任务12返修）：独立于 dev 面板的 body 级元素，默认隐藏，菜单内按钮开关。
+// 打开 dev 菜单会暂停游戏，面板内读数只能测到暂停态；挪出后压测时关菜单也能实时读数。
+// 插入到 body 首个子元素前：canvas 是 static 定位仍在它下面，各 overlay 在 DOM 序靠后仍压在它上面。
+// fpsTick 为模块级单例：showDev 每次打开都 replaceChildren 重建 DOM，rAF 循环全局只挂一条。
 let fpsEl = null;
 let fpsRunning = false;
 let fpsAcc = 0, fpsN = 0, fpsLast = performance.now();
+function ensureFpsEl() {
+  if (fpsEl) return fpsEl;
+  fpsEl = document.createElement('div');
+  fpsEl.id = 'dev-fps-fixed';
+  fpsEl.className = 'hidden';
+  fpsEl.textContent = 'FPS — / 平均帧时 —';
+  document.body.insertBefore(fpsEl, document.body.children[0]);
+  return fpsEl;
+}
 function fpsTick() {
   const now = performance.now();
   const dt = now - fpsLast; fpsLast = now;
   fpsAcc += dt; fpsN++;
   if (fpsAcc >= 1000) {
     const avg = fpsAcc / fpsN;
-    if (fpsEl) fpsEl.textContent = `FPS ${Math.round(1000 / avg)} / 平均帧时 ${avg.toFixed(1)}ms`;
+    fpsEl.textContent = `FPS ${Math.round(1000 / avg)} / 平均帧时 ${avg.toFixed(1)}ms`;
     fpsAcc = 0; fpsN = 0;
   }
   requestAnimationFrame(fpsTick);
@@ -73,16 +84,23 @@ export function showDev(rootEl, handlers) {
     wrap.appendChild(btn);
   }
 
-  // FPS / 平均帧时显示（帧时滑动平均，显示在 dev 面板内）
-  const fps = document.createElement('div');
-  fps.className = 'dev-fps';
-  fps.textContent = 'FPS — / 平均帧时 —';
-  wrap.appendChild(fps);
-  fpsEl = fps; // 重绑到本次新建的节点（旧节点已随 replaceChildren 摘除）
+  // FPS 显示开关：切换常驻读数元素显隐（只看开关状态，与菜单开关/游戏暂停无关）
+  const fps = ensureFpsEl();
   if (!fpsRunning) {
     fpsRunning = true;
     requestAnimationFrame(fpsTick);
   }
+  const fpsBtn = document.createElement('button');
+  fpsBtn.className = 'dev-btn';
+  const syncFpsBtn = () => {
+    fpsBtn.textContent = 'FPS 显示：' + (fps.classList.contains('hidden') ? '关' : '开');
+  };
+  fpsBtn.addEventListener('click', () => {
+    fps.classList.toggle('hidden');
+    syncFpsBtn();
+  });
+  syncFpsBtn();
+  wrap.appendChild(fpsBtn);
 
   // 性能压测按钮：填满 400 怪 + 满强化机枪，维持约 400 活跃弹道（手动验收用）
   const stressBtn = document.createElement('button');
