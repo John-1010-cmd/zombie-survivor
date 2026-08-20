@@ -178,9 +178,11 @@ export function createGameScene(deps) {
 
   // 主武器开火入口（带射击音）：包一层标记来源；枪口闪光（设计 §9.2：muzzle 处 2 粒子）
   function playerSpawnProjectile(opts) {
-    const mx = player.x + Math.cos(opts.angle) * player.r;
-    const my = player.y + Math.sin(opts.angle) * player.r;
-    spawnParticles(particlePool, scene.particles, mx, my, opts.visual?.color ?? '#ffe066', 2, rng);
+    if (scene.particles.length < MAX_PARTICLES) { // 粒子达上限时枪口闪光整体跳过
+      const mx = player.x + Math.cos(opts.angle) * player.r;
+      const my = player.y + Math.sin(opts.angle) * player.r;
+      spawnParticles(particlePool, scene.particles, mx, my, opts.visual?.color ?? '#ffe066', 2, rng);
+    }
     spawnProjectile({ ...opts, fromPlayer: true });
   }
 
@@ -216,8 +218,9 @@ export function createGameScene(deps) {
   }
 
   function hitZombie(z, dmg, visual) {
-    // 命中粒子喷溅（visual.hitParticles 驱动）：放在 damageNumbers 早退之前——设置项只守护 floater
-    if (visual?.hitParticles)
+    // 命中粒子喷溅（visual.hitParticles 驱动）：放在 damageNumbers 早退之前——设置项只守护 floater；
+    // 守卫只拦 spawnParticles，不影响后续 floater 逻辑
+    if (visual?.hitParticles && scene.particles.length < MAX_PARTICLES)
       spawnParticles(particlePool, scene.particles, z.x, z.y, visual.color ?? '#ffe066', visual.hitParticles, rng);
     if (settings && !settings.damageNumbers) return;
     if (scene.floaters.length < MAX_FLOATERS)
