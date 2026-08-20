@@ -51,3 +51,8 @@ export const MAX_ZOMBIE_R = Math.max(...Object.values(MONSTERS).map(z => z.radiu
 export function playableMonsters({ includeSpecial = false } = {}) {
   return Object.values(MONSTERS).filter(m => includeSpecial || !m.special);
 }
+
+// 自爆僵尸行为常量（设计 §4.3，本期新定数值，已确认）。
+// 由 behaviors.js 与 render.js 共同 import，避免 entities→systems 反向依赖。
+export const EXPLODER_FUSE_TIME = 1.2; // 引信时长
+export const EXPLODER_TRIGGER_R = 50;  // 距当前目标触发距离（本期新定数值，已确认）

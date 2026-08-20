@@ -27,6 +27,7 @@ import {
   spawnExplosion, spawnLightning, updateEffects, renderEffects,
 } from './entities/effects.js';
 import { MONSTERS } from './config/bestiary/monsters.js';
+import { BEHAVIORS } from './systems/behaviors.js';
 import { recordKill } from './core/meta.js';
 import { renderHud } from './systems/hud.js';
 import { showShop } from './ui/shop.js';
@@ -167,6 +168,23 @@ export function createGameScene(deps) {
     spawnProjectile({ ...opts, fromPlayer: true });
   }
 
+  // 行为钩子上下文（设计 §4.2）：AoE 数值已在 createZombie 时经管线缩放，此处只提供结算通道
+  function behaviorCtx() {
+    return {
+      player,
+      deployables: [...scene.turrets, ...scene.walls],
+      damagePlayer: dmg => {
+        if (damagePlayer(player, dmg)) {
+          shake(6);
+          sound('hurt');
+          if (player.hp <= 0) gameOver({ cleared: false });
+        }
+      },
+      spawnRing: (x, y, r) => fxExplosion(x, y, r),
+      rng,
+    };
+  }
+
   function killZombie(z) {
     if (z.counted) return;
     z.counted = true;
@@ -178,6 +196,7 @@ export function createGameScene(deps) {
     }
     if (scene.particles.length < MAX_PARTICLES)
       spawnParticles(scene.particles, z.x, z.y, '#5eff8a', 12, rng);
+    if (z.behavior) BEHAVIORS[z.behavior]?.onDeath?.(z, behaviorCtx()); // 行为死亡钩子（自爆 AoE 在此结算）
   }
 
   function hitZombie(z, dmg) {
@@ -352,7 +371,9 @@ export function createGameScene(deps) {
     for (const t of scene.turrets) if (t.alive) edibles.push(t);
     for (const seg of scene.walls) if (seg.alive) edibles.push(seg);
     for (const z of scene.zombies) {
-      if (z.alive) updateZombie(z, player, map.obstacles, dt, edibles);
+      if (!z.alive) continue;
+      updateZombie(z, player, map.obstacles, dt, edibles);
+      if (z.behavior) BEHAVIORS[z.behavior]?.onUpdate?.(z, dt, behaviorCtx()); // 行为更新钩子（自爆引信）
     }
     for (const p of projectiles) {
       if (p.alive) updateProjectile(p, dt);
