@@ -28,14 +28,14 @@ export function renderHud(ctx, game) {
   const barW = 220, barH = 16, mx = 16, my = 16;
   ctx.font = '12px sans-serif';
 
-  // 左上：血条（底 #533、条 #4d4，标注 hp/maxHp 数字）
-  ctx.fillStyle = '#533';
+  // 左上：血条（底 #122019、条 #5eff8a，标注 hp/maxHp 数字）
+  ctx.fillStyle = '#122019';
   ctx.fillRect(mx, my, barW, barH);
   const hpFrac = Math.max(0, Math.min(1, game.player.hp / game.player.maxHp));
-  ctx.fillStyle = '#4d4';
+  ctx.fillStyle = '#5eff8a';
   ctx.fillRect(mx, my, barW * hpFrac, barH);
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#e6f2ea';
   ctx.fillText(game.player.hp + '/' + game.player.maxHp, mx + barW / 2, my + 13);
 
   // 血条下方：银币数
@@ -58,17 +58,18 @@ export function renderHud(ctx, game) {
   }
   ctx.fillStyle = timeColor;
   ctx.fillText(timeText, W - 16, 24);
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#e6f2ea';
   ctx.fillText('击杀 ' + game.kills, W - 16, 44);
 
-  // 冒险：顶部居中四档进度条（当前档高亮 + 档内填充）
+  // 冒险：顶部居中档进度条（档数取 ADVENTURE_TIER_COUNT；当前档高亮 + 档内填充）
   if (game.mode === 'adventure') {
     const { tier, progress } = adventureTierProgress(game.time);
-    const segW = 90, segH = 8, gap = 6, totalW = segW * 4 + gap * 3;
+    const segW = 90, segH = 8, gap = 6;
+    const totalW = segW * ADVENTURE_TIER_COUNT + gap * (ADVENTURE_TIER_COUNT - 1);
     const x0 = (W - totalW) / 2, y0 = 12;
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= ADVENTURE_TIER_COUNT; i++) {
       const x = x0 + (i - 1) * (segW + gap);
-      ctx.fillStyle = 'rgba(255,255,255,.12)';
+      ctx.fillStyle = 'rgba(94,255,138,.12)';
       ctx.fillRect(x, y0, segW, segH);
       if (i < tier) { ctx.fillStyle = '#5eff8a'; ctx.fillRect(x, y0, segW, segH); }
       else if (i === tier) {
@@ -86,9 +87,9 @@ export function renderHud(ctx, game) {
   let sx = mx;
   for (const id of ITEM_IDS) {
     const it = ITEMS[id];
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillStyle = 'rgba(13,18,16,.8)';
     ctx.fillRect(sx, sy, slotW, slotH);
-    ctx.strokeStyle = '#888';
+    ctx.strokeStyle = '#2a4a3a';
     ctx.strokeRect(sx + 0.5, sy + 0.5, slotW - 1, slotH - 1);
     ctx.fillStyle = '#ffd75e';
     ctx.fillText(it.key + ' ' + it.name + '×' + (game.inventory[id] || 0), sx + 6, sy + 15);
@@ -96,7 +97,7 @@ export function renderHud(ctx, game) {
   }
 
   // 道具栏下方：武器名 + 分维等级（迭代 03：level 字段已删除）+ 辅助数量
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#e6f2ea';
   const dims = ENHANCE_STATS.map(s => `${STAT_LABEL[s].split(' ')[0]}${game.weapon.enhance[s]}`).join(' ');
   let info = WEAPONS[game.weapon.id].name + ' · ' + dims;
   const aux = game.aux;

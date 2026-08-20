@@ -50,7 +50,7 @@ function buildEntryEl(entry, game, handlers) {
   const el = document.createElement('div');
   const affordable = v.price === null || game.coins >= v.price;
   const disabled = !affordable || entry.owned0 === true;
-  el.className = 'shop-item' + (disabled ? ' disabled' : '');
+  el.className = 'card shop-item' + (disabled ? ' disabled' : '');
   el.innerHTML = `<h4>${v.title}</h4><p>${v.desc}</p>` +
     (v.price !== null ? `<p class="shop-price">${v.price} 银币</p>` : '');
   el.addEventListener('click', () => {
@@ -116,6 +116,7 @@ export function showShop(rootEl, game, handlers, opts = {}) {
 
   const btn = document.createElement('button');
   btn.id = 'shop-close';
+  btn.className = 'btn btn-dim';
   btn.textContent = '离开商店（Esc）';
   btn.addEventListener('click', onClose);
 

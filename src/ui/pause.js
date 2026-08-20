@@ -18,8 +18,8 @@ export function showPause(rootEl, settings, handlers) {
       <label><input id="pause-shake" type="checkbox"${settings.screenShake ? ' checked' : ''}> 震屏</label>
     </div>
     <div class="pause-buttons">
-      <button id="pause-resume">继续</button>
-      <button id="pause-quit">回主菜单</button>
+      <button id="pause-resume" class="btn">继续</button>
+      <button id="pause-quit" class="btn btn-dim">回主菜单</button>
     </div>
   `;
   rootEl.classList.remove('hidden');

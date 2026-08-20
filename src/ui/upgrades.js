@@ -18,16 +18,16 @@ export function showUpgrades(rootEl, meta, onBack, onSave) {
           const nextDmg = w.damage * (1 + 0.2 * (lv + 1));
           const disabled = maxed || meta.gold < price;
           return `
-            <div class="upgrade-row">
+            <div class="card upgrade-row">
               <h4>${w.name} <span>Lv ${lv}/10</span></h4>
               <p>伤害 ${Math.round(curDmg)}${maxed ? '（已满级）' : ` → ${Math.round(nextDmg)}`}</p>
-              <button class="upgrade-buy" data-id="${w.id}" ${disabled ? 'disabled' : ''}>
+              <button class="btn upgrade-buy" data-id="${w.id}" ${disabled ? 'disabled' : ''}>
                 ${maxed ? '满级' : `升级（${price} 金币）`}
               </button>
             </div>`;
         }).join('')}
       </div>
-      <button id="upgrades-back">返回</button>
+      <button id="upgrades-back" class="btn btn-dim">返回</button>
     `;
     for (const btn of rootEl.querySelectorAll('.upgrade-buy')) {
       btn.addEventListener('click', () => {

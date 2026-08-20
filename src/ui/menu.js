@@ -9,10 +9,10 @@ export function showMenu(rootEl, best, handlers) {
   const bestLine = rec ? `无尽最佳：存活 ${formatTime(rec.time)} / 击杀 ${rec.kills}` : '暂无纪录';
   rootEl.innerHTML = `
     <h1>Zombie Survivor</h1>
-    <button id="menu-adventure">冒险</button>
-    <button id="menu-endless">无尽</button>
-    <button id="menu-bestiary">图鉴</button>
-    <button id="menu-upgrades">武器升级</button>
+    <button id="menu-adventure" class="btn">冒险</button>
+    <button id="menu-endless" class="btn">无尽</button>
+    <button id="menu-bestiary" class="btn btn-dim">图鉴</button>
+    <button id="menu-upgrades" class="btn btn-dim">武器升级</button>
     <p id="menu-best-endless">${bestLine}</p>
   `;
   rootEl.classList.remove('hidden');

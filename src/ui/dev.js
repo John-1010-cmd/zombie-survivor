@@ -47,7 +47,7 @@ export function showDev(rootEl, handlers) {
   ];
   for (const [n, label] of coins) {
     const btn = document.createElement('button');
-    btn.className = 'dev-btn';
+    btn.className = 'btn btn-dim';
     btn.textContent = label;
     btn.addEventListener('click', () => onCoins(n));
     wrap.appendChild(btn);
@@ -58,27 +58,27 @@ export function showDev(rootEl, handlers) {
     .map(id => [id, '放置 ' + MONSTERS[id].name]);
   for (const [type, label] of spawns) {
     const btn = document.createElement('button');
-    btn.className = 'dev-btn';
+    btn.className = 'btn btn-dim';
     btn.textContent = label;
     btn.addEventListener('click', () => onSpawn(type));
     wrap.appendChild(btn);
   }
 
   const goldBtn = document.createElement('button');
-  goldBtn.className = 'dev-btn';
+  goldBtn.className = 'btn btn-dim';
   goldBtn.textContent = '+1000 金币（局外）';
   goldBtn.addEventListener('click', () => onGold(1000));
   wrap.appendChild(goldBtn);
 
   const unlockBtn = document.createElement('button');
-  unlockBtn.className = 'dev-btn';
+  unlockBtn.className = 'btn btn-dim';
   unlockBtn.textContent = '解锁全部关卡';
   unlockBtn.addEventListener('click', () => onUnlockLevels());
   wrap.appendChild(unlockBtn);
 
   for (const [m, label] of [['holdout10', '启动 坚守10'], ['holdout20', '启动 坚守20']]) {
     const btn = document.createElement('button');
-    btn.className = 'dev-btn';
+    btn.className = 'btn btn-dim';
     btn.textContent = label;
     btn.addEventListener('click', () => onStartMode(m));
     wrap.appendChild(btn);
@@ -91,7 +91,7 @@ export function showDev(rootEl, handlers) {
     requestAnimationFrame(fpsTick);
   }
   const fpsBtn = document.createElement('button');
-  fpsBtn.className = 'dev-btn';
+  fpsBtn.className = 'btn btn-dim';
   const syncFpsBtn = () => {
     fpsBtn.textContent = 'FPS 显示：' + (fps.classList.contains('hidden') ? '关' : '开');
   };
@@ -104,13 +104,13 @@ export function showDev(rootEl, handlers) {
 
   // 性能压测按钮：填满 400 怪 + 满强化机枪，维持约 400 活跃弹道（手动验收用）
   const stressBtn = document.createElement('button');
-  stressBtn.className = 'dev-btn';
+  stressBtn.className = 'btn btn-dim';
   stressBtn.textContent = '性能压测';
   stressBtn.addEventListener('click', () => onStress());
   wrap.appendChild(stressBtn);
 
   const close = document.createElement('button');
-  close.className = 'dev-btn dev-btn-close';
+  close.className = 'btn dev-btn-close';
   close.textContent = '关闭';
   close.addEventListener('click', onClose);
 

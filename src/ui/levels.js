@@ -15,14 +15,14 @@ export function showLevels(rootEl, meta, onStart, onBack) {
         const best = meta.adventure.bestTimes[lv.id];
         const bestText = !best ? '' : best.cleared ? '已通关' : `最佳：存活 ${formatTime(best.timeSec)}`;
         return `
-          <div class="level-card${unlocked ? '' : ' locked'}" data-level="${unlocked ? lv.id : ''}">
+          <div class="card level-card${unlocked ? '' : ' locked'}" data-level="${unlocked ? lv.id : ''}">
             <h3>${unlocked ? `第 ${i + 1} 关 · ${lv.name}` : '???'}</h3>
             <p>${unlocked ? `通关奖励 ${lv.goldReward} 金币（首通 ×2）` : '通关上一关解锁'}</p>
             <p>${bestText}</p>
           </div>`;
       }).join('')}
     </div>
-    <button id="levels-back">返回</button>
+    <button id="levels-back" class="btn btn-dim">返回</button>
   `;
   rootEl.classList.remove('hidden');
   for (const card of rootEl.querySelectorAll('.level-card:not(.locked)')) {

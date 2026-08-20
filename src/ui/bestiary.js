@@ -33,20 +33,20 @@ export function showBestiary(rootEl, meta, onBack) {
     rootEl.innerHTML = `
       <h2>图鉴</h2>
       <div class="bestiary-tabs">
-        <button id="bestiary-tab-monsters"${tab === 'monsters' ? ' class="active"' : ''}>怪物</button>
-        <button id="bestiary-tab-weapons"${tab === 'weapons' ? ' class="active"' : ''}>武器</button>
+        <button id="bestiary-tab-monsters" class="btn${tab === 'monsters' ? ' active' : ' btn-dim'}">怪物</button>
+        <button id="bestiary-tab-weapons" class="btn${tab === 'weapons' ? ' active' : ' btn-dim'}">武器</button>
       </div>
       <div class="bestiary-grid">
         ${tab === 'monsters' ? monsterCards.map(v => v.unlocked ? `
-          <div class="bestiary-card">
+          <div class="card bestiary-card">
             <div class="bestiary-swatch" style="background:${v.color}"></div>
             <h4>${v.name}</h4><p>${v.desc}</p>
             <p>HP ${v.stats.hp} · 速度 ${v.stats.speed} · 伤害 ${v.stats.damage} · 银币 ${v.stats.coin}</p>
             <p>累计击杀 ${v.kills}</p>
           </div>` : `
-          <div class="bestiary-card locked"><h4>???</h4><p>尚未遭遇</p></div>`).join('')
+          <div class="card bestiary-card locked"><h4>???</h4><p>尚未遭遇</p></div>`).join('')
         : weaponCards.map(v => `
-          <div class="bestiary-card">
+          <div class="card bestiary-card">
             <div class="bestiary-swatch" style="background:${v.color}"></div>
             <h4>${v.name}</h4><p>${v.desc}</p>
             <p>伤害 ${v.damage} · 射速 ${v.stats.fireRate}/s · 射程 ${v.stats.range}</p>
@@ -54,7 +54,7 @@ export function showBestiary(rootEl, meta, onBack) {
           </div>`).join('')}
       </div>
       <p class="bestiary-note">图鉴数值为基础值（关卡 1、局内 0 分钟口径）；局内实际值随关卡与时间增长。</p>
-      <button id="bestiary-back">返回</button>
+      <button id="bestiary-back" class="btn btn-dim">返回</button>
     `;
     rootEl.querySelector('#bestiary-tab-monsters').addEventListener('click', () => render('monsters'));
     rootEl.querySelector('#bestiary-tab-weapons').addEventListener('click', () => render('weapons'));
