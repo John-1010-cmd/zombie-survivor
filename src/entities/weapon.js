@@ -1,9 +1,11 @@
 // 武器实例：增强计算、索敌、cooldown 开火与 burst 连发。纯逻辑模块，无 DOM 依赖。
 import { WEAPONS, STAT_MAX } from '../config/bestiary/weapons.js';
+import { weaponDamage } from '../systems/scaling.js';
 
-export function createWeapon(id) {
+export function createWeapon(id, outLevel = 0) {
   return {
     id,
+    outLevel, // 局外等级（金币升级，设计 §6.2）：换枪时按 meta 等级重建（shop.js）
     spent: 0, // 该武器累计已花费的强化银币（换枪时全额返还）
     enhance: { damage: 0, fireRate: 0, projectiles: 0, range: 0,
       fragCount: 0, fragDamage: 0, chainLen: 0, chainDmg: 0 },
@@ -15,7 +17,7 @@ export function weaponStats(w) {
   const c = WEAPONS[w.id];
   const e = w.enhance;
   return {
-    damage: c.damage * Math.pow(1.25, e.damage),
+    damage: weaponDamage(c.damage, w.outLevel, e.damage), // 双乘区（设计 §2.2，线性取代旧复利）
     fireRate: c.fireRate * Math.pow(1.2, e.fireRate),
     projectiles: c.projectiles + e.projectiles,
     range: c.range * Math.pow(1.2, e.range),

@@ -85,7 +85,8 @@ export function createGameScene(deps) {
     mode,
     duration: modeCfg.duration || 0,
     // 武器必须经 scene.weapon 引用：换枪会重绑 game.weapon（buy）
-    weapon: createWeapon('pistol'),
+    weapon: createWeapon('pistol', meta ? (meta.weaponLevels.pistol ?? 0) : 0),
+    metaLevels: meta ? meta.weaponLevels : {}, // shop.js 换枪时按 meta 局外等级重建
     zombies: [],
     coins: 0,
     inventory: createInventory(),

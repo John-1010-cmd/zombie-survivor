@@ -91,7 +91,7 @@ export function buy(game, entry) {
   if (entry.kind === 'weapon') {
     game.coins -= entry.price;
     game.coins += (game.weapon.spent || 0); // 返还旧武器强化花费（武器购买价不返还）
-    game.weapon = createWeapon(entry.weapon); // 新武器 spent 天然 0
+    game.weapon = createWeapon(entry.weapon, game.metaLevels?.[entry.weapon] ?? 0); // 按 meta 局外等级重建；新武器 spent 天然 0
     game.weaponBought = (game.weaponBought ?? 0) + 1; // 全局换枪计数（用户裁定）
     return true;
   }

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/core/rng.js';
 import { createWeapon, weaponStats, applyEnhancement, updateWeapon } from '../src/entities/weapon.js';
 import { WEAPONS, WEAPON_MAX_LEVEL, STAT_MAX, STAT_LABEL, SPECIAL_STATS } from '../src/config/bestiary/weapons.js';
+import { weaponDamage } from '../src/systems/scaling.js';
 
 test('射程内无僵尸不开火，无冷却', () => {
   const w = createWeapon('pistol'); // range 300
@@ -102,10 +103,10 @@ test('单维达 STAT_MAX 后 applyEnhancement 忽略，其他维仍可强化', (
   const w = createWeapon('pistol');
   for (let i = 0; i < STAT_MAX; i++) applyEnhancement(w, 'damage');
   assert.equal(w.enhance.damage, STAT_MAX);
-  assert.equal(weaponStats(w).damage, 12 * Math.pow(1.25, STAT_MAX));
+  assert.equal(weaponStats(w).damage, 12 * (1 + 0.25 * STAT_MAX));
   applyEnhancement(w, 'damage'); // 满维：忽略
   assert.equal(w.enhance.damage, STAT_MAX);
-  assert.equal(weaponStats(w).damage, 12 * Math.pow(1.25, STAT_MAX));
+  assert.equal(weaponStats(w).damage, 12 * (1 + 0.25 * STAT_MAX));
   applyEnhancement(w, 'range'); // 其他维不受影响
   assert.equal(w.enhance.range, 1);
   assert.equal(w.enhance.fireRate, 0);
@@ -307,4 +308,34 @@ test('STAT_LABEL 增 4 专属维标签；SPECIAL_STATS 导出（grenade/tesla �
     grenade: ['fragCount', 'fragDamage'],
     tesla: ['chainLen', 'chainDmg'],
   });
+});
+
+// ---------- 双乘区（设计 §2.2/§6.2）：局外等级 × 局内线性 1+0.25n ----------
+
+test('createWeapon 携带局外等级；默认 0', () => {
+  assert.equal(createWeapon('pistol').outLevel, 0);
+  assert.equal(createWeapon('pistol', 5).outLevel, 5);
+});
+
+test('局内伤害改为线性 1+0.25n（取代旧复利 1.25^n）', () => {
+  const w = createWeapon('pistol'); // base 12
+  applyEnhancement(w, 'damage');
+  assert.equal(weaponStats(w).damage, 12 * 1.25);
+  for (let i = 0; i < 7; i++) applyEnhancement(w, 'damage'); // 满 8 维
+  assert.equal(weaponStats(w).damage, 12 * (1 + 0.25 * 8)); // ×3.0，而非 1.25^8≈5.96
+});
+
+test('双乘区叠乘：局外等级 × 局内购买', () => {
+  const w = createWeapon('pistol', 10); // 局外满级 ×3
+  assert.equal(weaponStats(w).damage, 12 * 3);
+  for (let i = 0; i < 8; i++) applyEnhancement(w, 'damage');
+  assert.equal(weaponStats(w).damage, 12 * 3 * 3);
+  // 与管线函数一致
+  assert.equal(weaponStats(w).damage, weaponDamage(12, 10, 8));
+});
+
+test('局外等级不影响攻速/弹道/范围/专属维', () => {
+  const w = createWeapon('pistol', 10);
+  assert.equal(weaponStats(w).fireRate, 2.0);
+  assert.equal(weaponStats(w).range, 300);
 });

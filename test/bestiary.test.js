@@ -55,6 +55,11 @@ test('武器清单 7 条（6 迁移 + sniperRifle），必填字段契约齐全'
       'projectiles', 'spread', 'pierce', 'aoe', 'arc', 'chain', 'knockback',
       'burst', 'burstInterval', 'basePrice', 'visual'])
       assert.ok(f in w, `${w.id} 缺必填字段 ${f}`);
+    // 数值字段应为有限数值且 ≥ 0（arc 是布尔，不在其列）——Task 8 契约校验加固
+    for (const f of ['damage', 'fireRate', 'projectileSpeed', 'range',
+      'projectiles', 'spread', 'pierce', 'aoe', 'chain', 'knockback',
+      'burst', 'burstInterval', 'basePrice'])
+      assert.ok(Number.isFinite(w[f]) && w[f] >= 0, `${w.id}.${f} 应为有限数值且 ≥ 0`);
     for (const f of ['bulletShape', 'color', 'trail', 'hitParticles', 'muzzleGlow'])
       assert.ok(f in w.visual, `${w.id}.visual 缺 ${f}`);
   }
