@@ -1,10 +1,10 @@
 // src/systems/shop.js —— 商店目录生成与购买逻辑。纯逻辑，无 DOM 依赖。
 // 分组目录（plan §6）：武器强化 / 更换武器 / 辅助武器 / 辅助强化 / 道具 / 风险
-import { ENHANCE_STATS, STAT_MAX, SPECIAL_STATS } from '../config/weapons.js';
+import { WEAPONS, ENHANCE_STATS, STAT_MAX, SPECIAL_STATS } from '../config/bestiary/weapons.js';
 import { ITEM_IDS } from '../config/items.js';
 import {
   ITEM_PRICES, DEPLOY_PRICES, AUX_PRICES, AUX_MAX,
-  WEAPON_BASE_PRICE, weaponPrice, itemPrice, enhancePrice, earlyTierBonus,
+  weaponPrice, itemPrice, enhancePrice, earlyTierBonus,
 } from '../config/economy.js';
 import { createWeapon, applyEnhancement } from '../entities/weapon.js';
 import { addItem } from './inventory.js';
@@ -25,11 +25,11 @@ export function catalogFor(game, tierRemainingSec) {
     weaponEnhance.push({ kind: 'enhance', stat, price: enhancePrice(owned), owned });
   }
 
-  // 更换武器：全部非当前武器（含手枪可回购），价格随**全局换枪次数**递增（用户裁定：维持全局计数）
+  // 更换武器：全部非当前武器（含手枪可回购），基价取图鉴 basePrice，随**全局换枪次数**递增
   const weapons = [];
-  for (const id of Object.keys(WEAPON_BASE_PRICE)) {
+  for (const id of Object.keys(WEAPONS)) {
     if (id === w.id) continue;
-    weapons.push({ kind: 'weapon', weapon: id, price: weaponPrice(WEAPON_BASE_PRICE[id], game.weaponBought ?? 0), refund: w.spent ?? 0 });
+    weapons.push({ kind: 'weapon', weapon: id, price: weaponPrice(WEAPONS[id].basePrice, game.weaponBought ?? 0), refund: w.spent ?? 0 });
   }
 
   // 辅助武器：达数量上限下架；价格随**该类型**已购数量递增（各自独立计数）

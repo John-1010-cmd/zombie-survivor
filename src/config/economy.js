@@ -1,7 +1,4 @@
 // src/config/economy.js —— 银币经济数值：增强价格曲线、换武器价格、道具价格、提前难度奖励。纯逻辑，无 DOM 依赖。
-import { WEAPON_BASE_PRICE } from './weapons.js';
-export { WEAPON_BASE_PRICE }; // 转导出：商店价格入口统一走 economy.js
-
 export const ENHANCE_BASE = 40;
 export const ENHANCE_GROWTH = 1.5;
 export const WEAPON_SWAP_PRICE = 80;
@@ -14,7 +11,7 @@ export const AUX_MAX = { drone: 3, gunner: 3, sniper: 2 };
 export const EARLY_BONUS_PER_30S = 25;
 
 // 四舍五入到 5 的倍数
-function round5(x) {
+export function round5(x) {
   return Math.round(x / 5) * 5;
 }
 
@@ -37,4 +34,9 @@ export function itemPrice(base, boughtCount) {
 // 提前难度奖励：每满 30 秒剩余时间奖励 25 银币
 export function earlyTierBonus(remainingSec) {
   return Math.floor(remainingSec / 30) * EARLY_BONUS_PER_30S;
+}
+
+// 武器局外升级价（金币）：round5(40 × 1.5^当前等级)，0→10 级累计 4540（设计 §6.2）
+export function weaponUpgradePrice(curLevel) {
+  return round5(40 * Math.pow(1.5, curLevel));
 }

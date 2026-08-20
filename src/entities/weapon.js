@@ -1,5 +1,5 @@
 // 武器实例：增强计算、索敌、cooldown 开火与 burst 连发。纯逻辑模块，无 DOM 依赖。
-import { WEAPONS, STAT_MAX } from '../config/weapons.js';
+import { WEAPONS, STAT_MAX } from '../config/bestiary/weapons.js';
 
 export function createWeapon(id) {
   return {

@@ -1,6 +1,6 @@
 // src/systems/hud.js —— HUD 渲染（屏幕空间）+ formatTime 纯函数。
 // renderHud 为 DOM（canvas）函数，不单测；formatTime 可单测。
-import { WEAPONS, ENHANCE_STATS, STAT_LABEL } from '../config/weapons.js';
+import { WEAPONS, ENHANCE_STATS, STAT_LABEL } from '../config/bestiary/weapons.js';
 import { ITEMS, ITEM_IDS } from '../config/items.js';
 import { AUX_CONFIG } from '../entities/companions.js';
 

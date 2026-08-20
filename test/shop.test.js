@@ -6,9 +6,9 @@ import { createWeapon } from '../src/entities/weapon.js';
 import { createInventory, itemCount } from '../src/systems/inventory.js';
 import {
   enhancePrice, earlyTierBonus, weaponPrice, itemPrice,
-  WEAPON_BASE_PRICE, AUX_PRICES, AUX_MAX, DEPLOY_PRICES,
+  AUX_PRICES, AUX_MAX, DEPLOY_PRICES,
 } from '../src/config/economy.js';
-import { STAT_MAX, ENHANCE_STATS } from '../src/config/weapons.js';
+import { WEAPONS, STAT_MAX, ENHANCE_STATS } from '../src/config/bestiary/weapons.js';
 
 function makeAux() {
   const dims = () => ({ damage: 0, fireRate: 0, projectiles: 0, range: 0 });
@@ -51,8 +51,8 @@ test('初始目录内容：4 武器强化 + 5 武器（含手枪回购）+ 3 辅
 
   const weapons = groupOf(cat, '更换武器');
   assert.deepEqual(weapons.map(e => e.weapon).sort(),
-    ['grenade', 'mg', 'rifle', 'rocket', 'tesla']); // 当前手枪排除
-  for (const e of weapons) assert.equal(e.price, WEAPON_BASE_PRICE[e.weapon]); // 第 1 把 = 基价
+    ['grenade', 'mg', 'rifle', 'rocket', 'sniperRifle', 'tesla']); // 当前手枪排除
+  for (const e of weapons) assert.equal(e.price, WEAPONS[e.weapon].basePrice); // 第 1 把 = 基价
 
   const aux = groupOf(cat, '辅助武器');
   assert.deepEqual(aux.map(e => e.aux), ['drone', 'gunner', 'sniper']);

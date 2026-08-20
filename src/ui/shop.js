@@ -1,7 +1,7 @@
 // src/ui/shop.js —— 商店面板（DOM 胶水，无单测）。
 // 迭代 03：分组目录渲染（武器强化/更换武器/辅助武器/辅助强化/道具/风险 各自一行）。
 // 目录由 catalogFor 生成（纯逻辑，见 systems/shop.js）；本文件只做展示与回调。
-import { WEAPONS, STAT_LABEL, ENHANCE_STATS, STAT_MAX } from '../config/weapons.js';
+import { WEAPONS, STAT_LABEL, ENHANCE_STATS, STAT_MAX } from '../config/bestiary/weapons.js';
 import { ITEMS } from '../config/items.js';
 import { AUX_CONFIG } from '../entities/companions.js';
 import { AUX_MAX } from '../config/economy.js';

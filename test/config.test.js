@@ -1,23 +1,12 @@
 // test/config.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { WEAPONS, WEAPON_MAX_LEVEL, ENHANCE_STATS, STAT_LABEL } from '../src/config/weapons.js';
+import { WEAPON_MAX_LEVEL, ENHANCE_STATS, STAT_LABEL } from '../src/config/bestiary/weapons.js';
 import {
   DIFFICULTY_TIERS, getTier, getTierConfig, TIER_DURATION, STAT_CAP_TIER,
   GRACE_PERIOD, MAX_ZOMBIES, SURGE_CAP, tierStartTime,
   HOLDOUT10_TIERS, getHoldout10Tier, getHoldout10Config, MODES,
 } from '../src/config/difficulty.js';
-
-test('武器字段完整且为正值，MVP 含 pistol/rifle/mg', () => {
-  for (const id of ['pistol', 'rifle', 'mg']) {
-    const w = WEAPONS[id];
-    assert.ok(w, `缺武器 ${id}`);
-    for (const f of ['damage','fireRate','projectileSpeed','range','projectiles','knockback'])
-      assert.ok(w[f] > 0, `${id}.${f} 应为正数`);
-    assert.ok(w.burst >= 1 && w.burstInterval >= 0);
-    assert.equal(w.id, id);
-  }
-});
 
 test('增强维度常量一致', () => {
   assert.equal(WEAPON_MAX_LEVEL, 8);

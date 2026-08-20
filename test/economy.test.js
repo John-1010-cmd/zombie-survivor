@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   ENHANCE_BASE, ENHANCE_GROWTH, WEAPON_SWAP_PRICE,
   ITEM_PRICES, EARLY_BONUS_PER_30S, enhancePrice, earlyTierBonus,
-  weaponPrice, AUX_PRICES, AUX_MAX, DEPLOY_PRICES, WEAPON_BASE_PRICE,
+  weaponPrice, AUX_PRICES, AUX_MAX, DEPLOY_PRICES,
 } from '../src/config/economy.js';
 
 test('经济常量正确', () => {
@@ -15,7 +15,6 @@ test('经济常量正确', () => {
   assert.deepEqual(DEPLOY_PRICES, { turret: 120, wall: 100 });
   assert.deepEqual(AUX_PRICES, { drone: 60, gunner: 90, sniper: 120 });
   assert.deepEqual(AUX_MAX, { drone: 3, gunner: 3, sniper: 2 });
-  assert.deepEqual(WEAPON_BASE_PRICE, { pistol: 40, rifle: 80, mg: 80, rocket: 150, grenade: 200, tesla: 250 });
   assert.equal(EARLY_BONUS_PER_30S, 25);
 });
 

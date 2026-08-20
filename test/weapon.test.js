@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/core/rng.js';
 import { createWeapon, weaponStats, applyEnhancement, updateWeapon } from '../src/entities/weapon.js';
-import { WEAPONS, WEAPON_MAX_LEVEL, STAT_MAX, WEAPON_BASE_PRICE, STAT_LABEL, SPECIAL_STATS } from '../src/config/weapons.js';
+import { WEAPONS, WEAPON_MAX_LEVEL, STAT_MAX, STAT_LABEL, SPECIAL_STATS } from '../src/config/bestiary/weapons.js';
 
 test('射程内无僵尸不开火，无冷却', () => {
   const w = createWeapon('pistol'); // range 300
@@ -112,8 +112,8 @@ test('单维达 STAT_MAX 后 applyEnhancement 忽略，其他维仍可强化', (
   assert.equal(weaponStats(w).range, 300 * 1.2);
 });
 
-test('六武器表：schema 齐全且数值与裁定一致（含新字段与射程下调）', () => {
-  const ids = ['pistol', 'rifle', 'mg', 'rocket', 'grenade', 'tesla'];
+test('七武器表：schema 齐全且数值与裁定一致（含新字段与射程下调）', () => {
+  const ids = ['pistol', 'rifle', 'mg', 'rocket', 'grenade', 'tesla', 'sniperRifle'];
   assert.deepEqual(Object.keys(WEAPONS).sort(), [...ids].sort());
   const expect = {
     pistol:  { damage: 12, fireRate: 2.0, projectileSpeed: 500, range: 300, aoe: 0,   arc: false, chain: 0 },
@@ -122,6 +122,7 @@ test('六武器表：schema 齐全且数值与裁定一致（含新字段与射�
     rocket:  { damage: 30, fireRate: 0.7, projectileSpeed: 350, range: 350, aoe: 90,  arc: false, chain: 0 },
     grenade: { damage: 25, fireRate: 0.6, projectileSpeed: 420, range: 330, aoe: 130, arc: true,  chain: 0 },
     tesla:   { damage: 14, fireRate: 1.2, projectileSpeed: 800, range: 260, aoe: 0,   arc: false, chain: 3 },
+    sniperRifle: { damage: 60, fireRate: 0.5, projectileSpeed: 1200, range: 600, aoe: 0, arc: false, chain: 0 },
   };
   for (const id of ids) {
     const c = WEAPONS[id];
@@ -145,10 +146,9 @@ test('六武器表：schema 齐全且数值与裁定一致（含新字段与射�
   }
 });
 
-test('STAT_MAX / WEAPON_BASE_PRICE / 既有常量', () => {
+test('STAT_MAX / 既有常量', () => {
   assert.equal(STAT_MAX, 8);
   assert.equal(WEAPON_MAX_LEVEL, 8);
-  assert.deepEqual(WEAPON_BASE_PRICE, { pistol: 40, rifle: 80, mg: 80, rocket: 150, grenade: 200, tesla: 250 });
 });
 
 test('weaponStats 透传 aoe/arc/chain（默认 0/false/0）', () => {

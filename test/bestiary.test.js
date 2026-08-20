@@ -3,6 +3,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { MONSTERS, MAX_ZOMBIE_R, playableMonsters } from '../src/config/bestiary/monsters.js';
 import { DIFFICULTY_TIERS } from '../src/config/difficulty.js';
+import { WEAPONS, SPECIAL_STATS } from '../src/config/bestiary/weapons.js';
+import { weaponUpgradePrice } from '../src/config/economy.js';
 
 test('怪物清单 5 条：normal/fast/tank/boss/exploder，字段契约齐全', () => {
   assert.deepEqual(Object.keys(MONSTERS).sort(), ['boss', 'exploder', 'fast', 'normal', 'tank']);
@@ -43,6 +45,46 @@ test('boss 标记 special；playableMonsters 默认排除 special、includeSpeci
   assert.deepEqual(playableMonsters().map(m => m.id).sort(), ['exploder', 'fast', 'normal', 'tank']);
   assert.deepEqual(playableMonsters({ includeSpecial: true }).map(m => m.id).sort(),
     ['boss', 'exploder', 'fast', 'normal', 'tank']);
+});
+
+test('武器清单 7 条（6 迁移 + sniperRifle），必填字段契约齐全', () => {
+  const ids = ['pistol', 'rifle', 'mg', 'rocket', 'grenade', 'tesla', 'sniperRifle'];
+  assert.deepEqual(Object.keys(WEAPONS).sort(), [...ids].sort());
+  for (const w of Object.values(WEAPONS)) {
+    for (const f of ['id', 'name', 'desc', 'damage', 'fireRate', 'projectileSpeed', 'range',
+      'projectiles', 'spread', 'pierce', 'aoe', 'arc', 'chain', 'knockback',
+      'burst', 'burstInterval', 'basePrice', 'visual'])
+      assert.ok(f in w, `${w.id} 缺必填字段 ${f}`);
+    for (const f of ['bulletShape', 'color', 'trail', 'hitParticles', 'muzzleGlow'])
+      assert.ok(f in w.visual, `${w.id}.visual 缺 ${f}`);
+  }
+  // 迁移数值抽检 + 基价并入
+  assert.equal(WEAPONS.pistol.damage, 12);
+  assert.equal(WEAPONS.grenade.arc, true);
+  assert.equal(WEAPONS.tesla.chain, 3);
+  assert.equal(WEAPONS.pistol.basePrice, 40);
+  assert.equal(WEAPONS.tesla.basePrice, 250);
+  // 新武器：狙击枪（纯数值验证零代码新增）
+  const s = WEAPONS.sniperRifle;
+  assert.equal(s.damage, 60);
+  assert.equal(s.pierce, 5);
+  assert.equal(s.knockback, 200);
+  assert.equal(s.basePrice, 200);
+  // 专属维随图鉴迁入
+  assert.deepEqual(SPECIAL_STATS, {
+    grenade: ['fragCount', 'fragDamage'],
+    tesla: ['chainLen', 'chainDmg'],
+  });
+});
+
+test('武器局外升级价：round5(40×1.5^lv)，0→10 累计 4540', () => {
+  assert.equal(weaponUpgradePrice(0), 40);
+  assert.equal(weaponUpgradePrice(1), 60);
+  assert.equal(weaponUpgradePrice(4), 205);
+  assert.equal(weaponUpgradePrice(9), 1540);
+  let sum = 0;
+  for (let lv = 0; lv < 10; lv++) sum += weaponUpgradePrice(lv);
+  assert.equal(sum, 4540);
 });
 
 test('难度表 weights 引用的怪物都存在（含无尽档 5 起的 exploder）', () => {
