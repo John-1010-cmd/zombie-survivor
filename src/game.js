@@ -21,6 +21,7 @@ import { createTeslaBall, updateTeslaBall } from './entities/teslaball.js';
 import { createWallSegment } from './entities/wall.js';
 import { ITEMS } from './config/items.js';
 import { MODES, TIER_DURATION } from './config/difficulty.js';
+import { ADVENTURE_TIER_DURATION, ADVENTURE_DURATION, adventureLevelById, adventureLevelIndex, makeAdventureCfg } from './config/adventure.js';
 import {
   spawnParticles, updateParticles, renderParticles,
   spawnFloater, updateFloaters, renderFloaters,
@@ -46,11 +47,14 @@ const ITEM_DROP_TABLE = [
 ];
 
 export function createGameScene(deps) {
-  const { canvas, input, mode = 'endless', audio, settings, meta = null, onGameOver } = deps;
-  const modeCfg = MODES[mode] || MODES.endless;
-  const cfgFn = modeCfg.getCfg;
-  const segLen = mode === 'holdout10' ? HOLDOUT10_SEGMENT : TIER_DURATION;
-  const scalingCtx = { mode, level: 1 }; // 冒险模式在任务 10 改为关卡序号
+  const { canvas, input, mode = 'endless', levelId = null, audio, settings, meta = null, onGameOver } = deps;
+  const isAdventure = mode === 'adventure';
+  const advLevel = isAdventure ? adventureLevelById(levelId) : null;
+  if (isAdventure && !advLevel) throw new Error('未知冒险关卡: ' + levelId);
+  const modeCfg = isAdventure ? null : (MODES[mode] || MODES.endless);
+  const cfgFn = isAdventure ? makeAdventureCfg(advLevel) : modeCfg.getCfg;
+  const segLen = isAdventure ? ADVENTURE_TIER_DURATION : (mode === 'holdout10' ? HOLDOUT10_SEGMENT : TIER_DURATION);
+  const scalingCtx = { mode, level: isAdventure ? adventureLevelIndex(levelId) : 1 };
 
   const rng = mulberry32((Math.random() * 2 ** 31) | 0);
   const map = generateMap(rng);
@@ -83,7 +87,9 @@ export function createGameScene(deps) {
     paused: false,
     player,
     mode,
-    duration: modeCfg.duration || 0,
+    duration: isAdventure ? ADVENTURE_DURATION : (modeCfg.duration || 0),
+    levelId: isAdventure ? levelId : null,
+    levelIndex: scalingCtx.level,
     // 武器必须经 scene.weapon 引用：换枪会重绑 game.weapon（buy）
     weapon: createWeapon('pistol', meta ? (meta.weaponLevels.pistol ?? 0) : 0),
     metaLevels: meta ? meta.weaponLevels : {}, // shop.js 换枪时按 meta 局外等级重建
@@ -116,6 +122,7 @@ export function createGameScene(deps) {
     applyEarlyTier,
     devAddCoins,
     devSpawnZombie,
+    quitRun,
   };
 
   function fxExplosion(x, y, radius) {
@@ -299,7 +306,7 @@ export function createGameScene(deps) {
         closeShop();
       },
       onClose: () => closeShop(),
-    });
+    }, { earlyTier: !isAdventure });
   }
 
   function closeShop() {
@@ -316,9 +323,18 @@ export function createGameScene(deps) {
     spawnFloater(scene.floaters, player.x, player.y - 40, '提前进入下一档！+' + bonus + ' 银币', '#ffd75e');
   }
 
+  // 冒险主动退出按失败结算（设计 §3.1）：供 main.js onQuit 分流调用
+  function quitRun() { gameOver({ cleared: false }); }
+
   function update(dt) {
     if (scene.paused || over) return;
     scene.time += dt;
+
+    // 冒险通关：撑满 360s 即通关（设计 §3.1；无直升机撤离）
+    if (isAdventure && scene.time >= ADVENTURE_DURATION) {
+      gameOver({ cleared: true });
+      return;
+    }
 
     updatePlayer(player, input.state, map.obstacles, MAP_SIZE, dt);
     updateWeapon(scene.weapon, player, scene.zombies, playerSpawnProjectile, rng, dt);
@@ -330,10 +346,10 @@ export function createGameScene(deps) {
     if (sig !== auxSpawnedSignature) { auxSpawnedSignature = sig; spawnAuxBodies(scene.aux); }
     updateAuxBodies(scene.aux, player, scene.zombies, spawnProjectile, rng, dt);
 
-    const budgetMult = modeCfg.surgeFrom && scene.time >= modeCfg.surgeFrom ? 1.5 : 1;
-    aliveCount += updateSpawner(spawner, scene.time, camera, MAP_SIZE, scene.zombies, aliveCount, rng, dt, budgetMult, cfgFn, scalingCtx);
+    const budgetMult = !isAdventure && modeCfg.surgeFrom && scene.time >= modeCfg.surgeFrom ? 1.5 : 1;
+    aliveCount += updateSpawner(spawner, scene.time, camera, MAP_SIZE, scene.zombies, aliveCount, rng, dt, budgetMult, cfgFn, scalingCtx, !isAdventure);
 
-    if (modeCfg.bossAt && !bossSpawned && scene.time >= modeCfg.bossAt) {
+    if (!isAdventure && modeCfg.bossAt && !bossSpawned && scene.time >= modeCfg.bossAt) {
       bossSpawned = true;
       const p = offscreenPoint(camera, MAP_SIZE, rng);
       scene.zombies.push(createZombie('boss', p.x, p.y, { ...scalingCtx, tier: cfgFn(scene.time).tier, timeSec: scene.time }));
@@ -343,7 +359,7 @@ export function createGameScene(deps) {
       spawnFloater(scene.floaters, player.x, player.y - 50, '守门 Boss 出现！', '#f55');
     }
 
-    if (modeCfg.duration) {
+    if (!isAdventure && modeCfg.duration) {
       const remain = modeCfg.duration - scene.time;
       if (!rescueAlerted && remain <= 60 && remain > 0) {
         rescueAlerted = true;
@@ -523,7 +539,7 @@ export function createGameScene(deps) {
     }
 
     // 撤离点提示
-    if (modeCfg.duration && rescueAlerted && !scene.helicopter) {
+    if (!isAdventure && modeCfg.duration && rescueAlerted && !scene.helicopter) {
       ctx.strokeStyle = 'rgba(94,239,255,.5)';
       ctx.lineWidth = 3;
       ctx.setLineDash([12, 10]);

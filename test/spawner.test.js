@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/core/rng.js';
 import { MONSTERS } from '../src/config/bestiary/monsters.js';
-import { MAX_ZOMBIES } from '../src/config/difficulty.js';
+import { MAX_ZOMBIES, getTierConfig } from '../src/config/difficulty.js';
 import { createSpawner, updateSpawner, offscreenPoint } from '../src/systems/spawner.js';
 
 const CAM = { x: 860, y: 1140, viewW: 1280, viewH: 720 }; // 镜头中心 = (1500,1500)
@@ -160,4 +160,15 @@ test('offscreenPoint：角落镜头全部越界时退化为地图内随机点', 
     const p = offscreenPoint(cam, 3000, rng);
     assert.ok(p.x >= 20 && p.x <= 2980 && p.y >= 20 && p.y <= 2980, `退化点 (${p.x},${p.y}) 越界`);
   }
+});
+
+test('surge=false 跨档不产生包围潮，但仍按新档 weights 常规刷怪', () => {
+  const zombies = [];
+  const rng = mulberry32(3);
+  const sp = createSpawner();
+  sp.budget = 999;
+  const n = updateSpawner(sp, 180, CAM, 3000, zombies, 0, rng, 1 / 60, 1, getTierConfig, {}, false);
+  assert.equal(sp.lastTier, 2);
+  assert.ok(n >= 1 && n < 25, `surge=false 只走常规刷怪，实际新增 ${n}（应 <25 且 ≥1）`);
+  for (const z of zombies) assert.ok(z.type === 'normal' || z.type === 'fast');
 });

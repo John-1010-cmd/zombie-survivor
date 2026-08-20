@@ -8,6 +8,8 @@ import { showMenu } from './ui/menu.js';
 import { showPause } from './ui/pause.js';
 import { showGameOver } from './ui/gameover.js';
 import { showDev } from './ui/dev.js';
+import { loadMeta, saveMeta, addGold, recordAdventureResult } from './core/meta.js';
+import { ADVENTURE_LEVELS, adventureLevelById, adventureLevelIndex, clearGoldReward, failGoldReward } from './config/adventure.js';
 
 const canvas = document.getElementById('game');
 const menuEl = document.getElementById('menu');
@@ -19,6 +21,7 @@ const devEl = document.getElementById('dev');
 const engine = createEngine(canvas);
 const settings = loadSettings();
 const audio = createAudio(settings);
+const meta = loadMeta(); // 局外存档全程内存引用，变更后 saveMeta（Task 10）
 let currentScene = null;
 
 const input = createInput({
@@ -49,7 +52,13 @@ function onEsc() {
       onQuit: () => {
         pauseEl.classList.add('hidden');
         audio.stop('heli');
-        showMenuScreen();
+        if (currentScene.mode === 'adventure') {
+          // 冒险主动退出按失败结算（设计 §3.1）：走 gameOver → 失败保底结算
+          currentScene.paused = false;
+          currentScene.quitRun(); // → gameOver({cleared:false})
+        } else {
+          showMenuScreen();
+        }
       },
       onChange: s => {
         Object.assign(settings, s);
@@ -80,19 +89,35 @@ function closeDev() {
   currentScene.paused = false;
 }
 
-function startGame(mode) {
+function startGame(mode, levelId = null) {
   hideOverlays();
   currentScene = createGameScene({
     canvas,
     input,
     mode,
+    levelId,
     audio,
     settings,
+    meta,
     onGameOver: stats => {
+      if (stats.mode === 'adventure') {
+        const level = adventureLevelById(levelId);
+        const r = recordAdventureResult(meta, level.id, adventureLevelIndex(level.id), ADVENTURE_LEVELS.length, stats.cleared, stats.time);
+        const gold = stats.cleared ? clearGoldReward(level, r.isFirstClear) : failGoldReward(level, stats.time);
+        addGold(meta, gold);
+        saveMeta(meta);
+        audio.play('click');
+        showGameOver(gameoverEl, { ...stats, gold, firstClear: stats.cleared && r.isFirstClear }, false, {
+          onRestart: () => startGame('adventure', levelId),
+          onLevels: () => showMenuScreen(), // 占位：Task 11 替换为 showLevelsScreen
+          onMenu: showMenuScreen,
+        });
+        return;
+      }
       const r = updateBest(loadBest(), stats, stats.mode);
       saveBest(r.best);
       audio.play('click');
-      showGameOver(gameoverEl, stats, r.isNew, () => startGame(mode), showMenuScreen);
+      showGameOver(gameoverEl, stats, r.isNew, { onRestart: () => startGame(mode), onMenu: showMenuScreen });
     },
   });
   engine.setScene(currentScene);

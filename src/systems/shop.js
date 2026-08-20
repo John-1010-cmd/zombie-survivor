@@ -13,7 +13,8 @@ const AUX_TYPES = ['drone', 'gunner', 'sniper'];
 const TURRET_STATS = ['damage', 'fireRate', 'projectiles', 'range'];
 
 // 生成分组商品目录。game = { coins, weapon, inventory, aux, turretEnhance, wallEnhance, weaponBought }
-export function catalogFor(game, tierRemainingSec) {
+// opts.earlyTier === false 时移除“风险”组（冒险模式：提前进档会破坏 360s 结构，设计 §3.1）
+export function catalogFor(game, tierRemainingSec, opts = {}) {
   const w = game.weapon;
 
   // 武器强化：四维独立计价 + 当前武器的专属维（迭代 05：榴弹碎片/二次伤害、磁电链路/链伤），仅对应武器展示
@@ -65,15 +66,18 @@ export function catalogFor(game, tierRemainingSec) {
     items.push({ kind: 'deployEnhance', target: 'wall', stat: 'hp', price: enhancePrice(wallOwned), owned: wallOwned });
   }
 
-  // 风险：bonus 为 0 时仍列出（"无奖励"标注由 UI 负责）
-  return [
+  // 风险：bonus 为 0 时仍列出（"无奖励"标注由 UI 负责）；冒险模式移除（设计 §3.1）
+  const groups = [
     { group: '武器强化', entries: weaponEnhance },
     { group: '更换武器', entries: weapons },
     { group: '辅助武器', entries: aux },
     { group: '辅助强化', entries: auxEnhance },
     { group: '道具', entries: items },
-    { group: '风险', entries: [{ kind: 'earlyTier', bonus: earlyTierBonus(tierRemainingSec) }] },
   ];
+  if (opts.earlyTier !== false) {
+    groups.push({ group: '风险', entries: [{ kind: 'earlyTier', bonus: earlyTierBonus(tierRemainingSec) }] });
+  }
+  return groups;
 }
 
 // 购买：余额不足 / 对应条目已达上限 / earlyTier（不经 buy）返回 false；成功扣款并生效

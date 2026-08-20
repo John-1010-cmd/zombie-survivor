@@ -10,6 +10,13 @@ export function formatTime(sec) {
   return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
 }
 
+// 冒险四档进度（设计 §8 HUD）：tier 1–4、档内进度 0–1；纯函数可单测
+export function adventureTierProgress(timeSec) {
+  const tier = Math.min(4, Math.floor(timeSec / 90) + 1);
+  const progress = Math.min(1, Math.max(0, (timeSec - (tier - 1) * 90) / 90));
+  return { tier, progress };
+}
+
 // game = { player:{hp,maxHp}, coins, time, mode, kills, weapon:{id,level}, inventory, duration? }
 // 布局：左上血条+数值、其下银币数；右上计时（endless 正计时 / holdout 倒计时，
 // 剩 60s 变红）、击杀数；左下道具栏（三槽：按键+名称+数量）、武器名+Lv。
@@ -33,13 +40,15 @@ export function renderHud(ctx, game) {
   ctx.fillStyle = '#ffd75e';
   ctx.fillText('银币 ' + game.coins, mx, my + barH + 20);
 
-  // 右上：计时（无尽正计时 / 坚守倒计时，剩 60s 变红）+ 击杀数
+  // 右上：计时（无尽/冒险正计时 / 坚守倒计时，剩 60s 变红）+ 击杀数
   ctx.textAlign = 'right';
   let timeColor = '#fff';
   let timeText;
-  if (game.mode === 'endless') {
+  if (game.mode === 'endless' || game.mode === 'adventure') {
+    // 正计时：无尽与冒险都显示 game.time，不变红
     timeText = formatTime(game.time);
   } else {
+    // 原倒计时逻辑：坚守（holdout10/20）剩 60s 变红
     const remain = Math.max(0, (game.duration || 0) - game.time);
     timeText = formatTime(remain);
     if (remain <= 60) timeColor = '#f55';
@@ -48,6 +57,24 @@ export function renderHud(ctx, game) {
   ctx.fillText(timeText, W - 16, 24);
   ctx.fillStyle = '#fff';
   ctx.fillText('击杀 ' + game.kills, W - 16, 44);
+
+  // 冒险：顶部居中四档进度条（当前档高亮 + 档内填充）
+  if (game.mode === 'adventure') {
+    const { tier, progress } = adventureTierProgress(game.time);
+    const segW = 90, segH = 8, gap = 6, totalW = segW * 4 + gap * 3;
+    const x0 = (W - totalW) / 2, y0 = 12;
+    for (let i = 1; i <= 4; i++) {
+      const x = x0 + (i - 1) * (segW + gap);
+      ctx.fillStyle = 'rgba(255,255,255,.12)';
+      ctx.fillRect(x, y0, segW, segH);
+      if (i < tier) { ctx.fillStyle = '#5eff8a'; ctx.fillRect(x, y0, segW, segH); }
+      else if (i === tier) {
+        ctx.fillStyle = '#5eff8a';
+        ctx.fillRect(x, y0, segW * progress, segH);
+        ctx.strokeStyle = '#5eff8a'; ctx.strokeRect(x + 0.5, y0 + 0.5, segW - 1, segH - 1);
+      }
+    }
+  }
 
   // 左下：道具栏（三槽：按键标注 + 名称 + 数量）
   ctx.textAlign = 'left';

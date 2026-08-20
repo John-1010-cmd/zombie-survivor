@@ -277,6 +277,14 @@ test('道具价格来源：ITEM_PRICES 与 DEPLOY_PRICES 一致', () => {
   assert.equal(byId.medkit, 30);
 });
 
+test('冒险模式目录无“风险”组（提前进档会破坏 360s 结构，设计 §3.1）', () => {
+  const game = makeGame();
+  const groups = catalogFor(game, 120, { earlyTier: false });
+  assert.ok(!groups.some(g => g.group === '风险'));
+  const withRisk = catalogFor(game, 120);
+  assert.ok(withRisk.some(g => g.group === '风险')); // 默认保留（无尽/坚守）
+});
+
 test('earlyTier：bonus=0 仍列出；不经 buy 且无副作用', () => {
   const g = makeGame();
   const risk = groupOf(catalogFor(g, 0), '风险');

@@ -33,7 +33,7 @@ function pickSpawnPoint(cam, mapSize, rng) {
   return offscreenPoint(cam, mapSize, rng);
 }
 
-export function updateSpawner(sp, time, cam, mapSize, zombies, aliveCount, rng, dt, budgetMult = 1, cfgFn = getTierConfig, scalingCtx = {}) {
+export function updateSpawner(sp, time, cam, mapSize, zombies, aliveCount, rng, dt, budgetMult = 1, cfgFn = getTierConfig, scalingCtx = {}, surge = true) {
   const cfg = cfgFn(time);
   let bps = cfg.budgetPerSec;
   if (time < GRACE_PERIOD) bps = 0.5 + (cfg.budgetPerSec - 0.5) * (time / GRACE_PERIOD);
@@ -43,7 +43,8 @@ export function updateSpawner(sp, time, cam, mapSize, zombies, aliveCount, rng, 
   let spawned = 0;
 
   // 档位切换：环形包围潮（不消耗预算，但受 MAX_ZOMBIES 同屏上限约束）
-  if (cfg.tier > sp.lastTier) {
+  // surge=false（冒险模式，设计 §3.1）不刷包围潮，但仍推进 lastTier 防档位追不上
+  if (surge && cfg.tier > sp.lastTier) {
     const n = Math.min(20 + (cfg.tier - 1) * 5, SURGE_CAP);
     const r = spawnRadius(cam);
     const cx = cam.x + cam.viewW / 2, cy = cam.y + cam.viewH / 2;
@@ -58,6 +59,8 @@ export function updateSpawner(sp, time, cam, mapSize, zombies, aliveCount, rng, 
       spawned++;
     }
     sp.lastTier = cfg.tier;
+  } else {
+    sp.lastTier = cfg.tier; // surge=false（冒险）不刷包围潮，但仍推进档位防止追不上
   }
 
   // 常规刷怪（预算制，每帧最多 20 次）

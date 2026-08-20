@@ -60,9 +60,9 @@ function buildEntryEl(entry, game, handlers) {
   return el;
 }
 
-export function showShop(rootEl, game, handlers) {
+export function showShop(rootEl, game, handlers, opts = {}) {
   const { onBuy, onEarlyTier, onClose } = handlers;
-  const groups = catalogFor(game, game.tierRemaining);
+  const groups = catalogFor(game, game.tierRemaining, opts);
 
   const head = document.createElement('div');
   head.className = 'shop-head';
