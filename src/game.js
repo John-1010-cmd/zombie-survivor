@@ -28,6 +28,7 @@ import {
   spawnExplosion, spawnLightning, updateEffects, renderEffects,
 } from './entities/effects.js';
 import { MONSTERS } from './config/bestiary/monsters.js';
+import { renderZombie } from './entities/render.js';
 import { BEHAVIORS } from './systems/behaviors.js';
 import { recordKill } from './core/meta.js';
 import { renderHud } from './systems/hud.js';
@@ -623,30 +624,8 @@ export function createGameScene(deps) {
       }
     }
 
-    // 僵尸
-    for (const z of scene.zombies) {
-      const c = MONSTERS[z.type];
-      ctx.fillStyle = c.visual.color;
-      ctx.beginPath();
-      ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
-      ctx.fill();
-      if (z.hitFlash > 0) {
-        ctx.globalAlpha = Math.min(1, z.hitFlash / 0.1);
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      }
-      if (z.hp < z.maxHp) {
-        const bw = z.r * 2, bh = 3;
-        const x = z.x - bw / 2, y = z.y - z.r - 8;
-        ctx.fillStyle = '#a33';
-        ctx.fillRect(x, y, bw, bh);
-        ctx.fillStyle = '#5eff8a';
-        ctx.fillRect(x, y, bw * Math.max(0, z.hp / z.maxHp), bh);
-      }
-    }
+    // 僵尸：几何矢量渲染（entities/render.js，设计 §9.1）
+    for (const z of scene.zombies) renderZombie(ctx, z, scene.time);
 
     // 辅助武器载体（迭代 05）：drone 青三角 / gunner 橙方块 / sniper 蓝菱形
     for (const b of scene.aux.bodies) {

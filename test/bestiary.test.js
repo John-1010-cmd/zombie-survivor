@@ -6,6 +6,7 @@ import { DIFFICULTY_TIERS } from '../src/config/difficulty.js';
 import { WEAPONS, SPECIAL_STATS } from '../src/config/bestiary/weapons.js';
 import { weaponUpgradePrice } from '../src/config/economy.js';
 import { monsterView, weaponView } from '../src/ui/bestiary.js';
+import { SHAPES } from '../src/entities/render.js';
 
 test('怪物清单 5 条：normal/fast/tank/boss/exploder，字段契约齐全', () => {
   assert.deepEqual(Object.keys(MONSTERS).sort(), ['boss', 'exploder', 'fast', 'normal', 'tank']);
@@ -119,4 +120,12 @@ test('武器条目：全部可见，携带局外等级与下一级提升', () =>
   assert.ok(Math.abs(v.nextDamage - 12 * 1.2) < 1e-9); // 每级 +20% 图鉴基础
   const maxed = weaponView(WEAPONS.pistol, { pistol: 10 });
   assert.equal(maxed.maxed, true);
+});
+
+// —— 形状注册表（设计 §9.1）：图鉴 visual.shape 必须已注册（只断言键存在，不测绘制）——
+test('每个怪物的 visual.shape 都已注册画法', () => {
+  for (const m of Object.values(MONSTERS))
+    assert.ok(SHAPES[m.visual.shape], `${m.id}.visual.shape=${m.visual.shape} 未在 render.js 注册`);
+  // 五种形状齐全
+  assert.deepEqual(Object.keys(SHAPES).sort(), ['circle', 'diamond', 'hexagon', 'pentagon', 'triangle']);
 });
