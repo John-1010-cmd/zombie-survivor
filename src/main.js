@@ -8,6 +8,9 @@ import { showMenu } from './ui/menu.js';
 import { showPause } from './ui/pause.js';
 import { showGameOver } from './ui/gameover.js';
 import { showDev } from './ui/dev.js';
+import { showLevels } from './ui/levels.js';
+import { showUpgrades } from './ui/upgrades.js';
+import { showBestiary } from './ui/bestiary.js';
 import { loadMeta, saveMeta, addGold, recordAdventureResult } from './core/meta.js';
 import { ADVENTURE_LEVELS, adventureLevelById, adventureLevelIndex, clearGoldReward, failGoldReward } from './config/adventure.js';
 
@@ -17,6 +20,9 @@ const pauseEl = document.getElementById('pause');
 const shopEl = document.getElementById('shop');
 const gameoverEl = document.getElementById('gameover');
 const devEl = document.getElementById('dev');
+const levelsEl = document.getElementById('levels');
+const bestiaryEl = document.getElementById('bestiary');
+const upgradesEl = document.getElementById('upgrades');
 
 const engine = createEngine(canvas);
 const settings = loadSettings();
@@ -54,7 +60,6 @@ function onEsc() {
         audio.stop('heli');
         if (currentScene.mode === 'adventure') {
           // 冒险主动退出按失败结算（设计 §3.1）：走 gameOver → 失败保底结算
-          currentScene.paused = false;
           currentScene.quitRun(); // → gameOver({cleared:false})
         } else {
           showMenuScreen();
@@ -109,7 +114,7 @@ function startGame(mode, levelId = null) {
         audio.play('click');
         showGameOver(gameoverEl, { ...stats, gold, firstClear: stats.cleared && r.isFirstClear }, false, {
           onRestart: () => startGame('adventure', levelId),
-          onLevels: () => showMenuScreen(), // 占位：Task 11 替换为 showLevelsScreen
+          onLevels: showLevelsScreen,
           onMenu: showMenuScreen,
         });
         return;
@@ -123,10 +128,31 @@ function startGame(mode, levelId = null) {
   engine.setScene(currentScene);
 }
 
+function showLevelsScreen() {
+  hideOverlays();
+  currentScene = null;
+  showLevels(levelsEl, meta, levelId => startGame('adventure', levelId), showMenuScreen);
+}
+function showUpgradesScreen() {
+  hideOverlays();
+  currentScene = null;
+  showUpgrades(upgradesEl, meta, showMenuScreen, () => saveMeta(meta));
+}
+function showBestiaryScreen() {
+  hideOverlays();
+  currentScene = null;
+  showBestiary(bestiaryEl, meta, showMenuScreen);
+}
+
 function showMenuScreen() {
   hideOverlays();
   currentScene = null;
-  showMenu(menuEl, loadBest(), startGame);
+  showMenu(menuEl, loadBest(), {
+    onAdventure: showLevelsScreen,
+    onEndless: () => startGame('endless'),
+    onBestiary: showBestiaryScreen,
+    onUpgrades: showUpgradesScreen,
+  });
 }
 
 showMenuScreen();

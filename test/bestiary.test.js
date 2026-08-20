@@ -5,6 +5,7 @@ import { MONSTERS, MAX_ZOMBIE_R, playableMonsters } from '../src/config/bestiary
 import { DIFFICULTY_TIERS } from '../src/config/difficulty.js';
 import { WEAPONS, SPECIAL_STATS } from '../src/config/bestiary/weapons.js';
 import { weaponUpgradePrice } from '../src/config/economy.js';
+import { monsterView, weaponView } from '../src/ui/bestiary.js';
 
 test('怪物清单 5 条：normal/fast/tank/boss/exploder，字段契约齐全', () => {
   assert.deepEqual(Object.keys(MONSTERS).sort(), ['boss', 'exploder', 'fast', 'normal', 'tank']);
@@ -97,4 +98,25 @@ test('难度表 weights 引用的怪物都存在（含无尽档 5 起的 explode
     for (const id of Object.keys(t.weights)) assert.ok(MONSTERS[id], `档 ${t.tier} 引用未知怪物 ${id}`);
   for (const t of DIFFICULTY_TIERS.slice(4)) assert.ok(t.weights.exploder > 0, `档 ${t.tier} 应含 exploder`);
   assert.ok(MAX_ZOMBIE_R >= 41); // 不小于守门 Boss 半径
+});
+
+// —— 图鉴界面视图模型（设计 §7）——
+test('怪物条目：未击杀 → ??? 占位；首次击杀 → 解锁（名称/描述/基础数值/累计击杀）', () => {
+  const locked = monsterView(MONSTERS.exploder, {});
+  assert.equal(locked.unlocked, false);
+  assert.equal(locked.name, '???');
+  const seen = monsterView(MONSTERS.exploder, { exploder: 1 });
+  assert.equal(seen.unlocked, true);
+  assert.equal(seen.name, '自爆僵尸');
+  assert.equal(seen.kills, 1);
+  assert.equal(seen.stats.hp, 40); // 图鉴基础值（关卡 1、局内 0 分钟口径）
+});
+
+test('武器条目：全部可见，携带局外等级与下一级提升', () => {
+  const v = weaponView(WEAPONS.pistol, {});
+  assert.equal(v.level, 0);
+  assert.equal(v.maxed, false);
+  assert.ok(Math.abs(v.nextDamage - 12 * 1.2) < 1e-9); // 每级 +20% 图鉴基础
+  const maxed = weaponView(WEAPONS.pistol, { pistol: 10 });
+  assert.equal(maxed.maxed, true);
 });

@@ -3,6 +3,7 @@
 import { WEAPONS, ENHANCE_STATS, STAT_LABEL } from '../config/bestiary/weapons.js';
 import { ITEMS, ITEM_IDS } from '../config/items.js';
 import { AUX_CONFIG } from '../entities/companions.js';
+import { ADVENTURE_TIER_DURATION, ADVENTURE_LEVELS } from '../config/adventure.js';
 
 export function formatTime(sec) {
   const m = Math.floor(sec / 60);
@@ -10,10 +11,12 @@ export function formatTime(sec) {
   return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
 }
 
-// 冒险四档进度（设计 §8 HUD）：tier 1–4、档内进度 0–1；纯函数可单测
+// 冒险四档进度（设计 §8 HUD）：tier 1–N、档内进度 0–1；纯函数可单测。
+// 档数取自关卡表（当前均 4 档），档时长取 ADVENTURE_TIER_DURATION，消除硬编码 90/4。
+const ADVENTURE_TIER_COUNT = Math.max(...ADVENTURE_LEVELS.map(l => l.tiers.length));
 export function adventureTierProgress(timeSec) {
-  const tier = Math.min(4, Math.floor(timeSec / 90) + 1);
-  const progress = Math.min(1, Math.max(0, (timeSec - (tier - 1) * 90) / 90));
+  const tier = Math.min(ADVENTURE_TIER_COUNT, Math.floor(timeSec / ADVENTURE_TIER_DURATION) + 1);
+  const progress = Math.min(1, Math.max(0, (timeSec - (tier - 1) * ADVENTURE_TIER_DURATION) / ADVENTURE_TIER_DURATION));
   return { tier, progress };
 }
 
