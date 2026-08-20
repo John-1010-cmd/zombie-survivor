@@ -61,13 +61,12 @@ export function renderHud(ctx, game) {
   ctx.fillStyle = '#e6f2ea';
   ctx.fillText('击杀 ' + game.kills, W - 16, 44);
 
-  // 冒险：顶部居中档进度条（档数取 ADVENTURE_TIER_COUNT；当前档高亮 + 档内填充）
+  // 冒险：顶部居中四档进度条（当前档高亮 + 档内填充）
   if (game.mode === 'adventure') {
     const { tier, progress } = adventureTierProgress(game.time);
-    const segW = 90, segH = 8, gap = 6;
-    const totalW = segW * ADVENTURE_TIER_COUNT + gap * (ADVENTURE_TIER_COUNT - 1);
+    const segW = 90, segH = 8, gap = 6, totalW = segW * 4 + gap * 3;
     const x0 = (W - totalW) / 2, y0 = 12;
-    for (let i = 1; i <= ADVENTURE_TIER_COUNT; i++) {
+    for (let i = 1; i <= 4; i++) {
       const x = x0 + (i - 1) * (segW + gap);
       ctx.fillStyle = 'rgba(94,255,138,.12)';
       ctx.fillRect(x, y0, segW, segH);

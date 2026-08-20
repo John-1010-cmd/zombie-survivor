@@ -110,7 +110,7 @@ export function showDev(rootEl, handlers) {
   wrap.appendChild(stressBtn);
 
   const close = document.createElement('button');
-  close.className = 'btn dev-btn-close';
+  close.className = 'btn btn-dim';
   close.textContent = '关闭';
   close.addEventListener('click', onClose);
 
