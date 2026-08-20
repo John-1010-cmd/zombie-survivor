@@ -3,15 +3,15 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createZombie, updateZombie, damageZombie } from '../src/entities/zombie.js';
 
-const T1 = { tier: 1, hpMult: 1, speedMult: 1 };
-const T4 = { tier: 4, hpMult: 3.2, speedMult: 1.05 };
-const T5 = { tier: 5, hpMult: 4.5, speedMult: 1.1 };
-const T13 = { tier: 13, hpMult: 30, speedMult: 1.3 };
+const T1 = { tier: 1 };
+const T4 = { tier: 4 };
+const T5 = { tier: 5 };
+const T13 = { tier: 13 };
 
-test('难度倍率作用于 hp 与 speed', () => {
+test('timeSec=0、level=1 时数值为图鉴基础值（缩放走 scaling 管线）', () => {
   const z = createZombie('normal', 0, 0, T4);
-  assert.equal(z.hp, 30 * 3.2);
-  assert.equal(z.speed, 70 * 1.05);
+  assert.equal(z.hp, 30);
+  assert.equal(z.speed, 70);
   assert.equal(z.alive, true);
 });
 
@@ -137,7 +137,7 @@ test('250px 外的 edible 不拦截：仍追玩家（向后兼容默认参）', 
   assert.equal(e.hp, 100);
 });
 
-test('守门 Boss 创建：数值与抗性生效，倍率照常作用', () => {
+test('守门 Boss 创建：special 不缩放（hp/speed/damage 恒基础值），coin 仍按档递增', () => {
   const b = createZombie('boss', 10, 10, T1);
   assert.equal(b.type, 'boss');
   assert.equal(b.r, 41);
@@ -147,7 +147,34 @@ test('守门 Boss 创建：数值与抗性生效，倍率照常作用', () => {
   assert.equal(b.damage, 40);
   assert.equal(b.coin, 50);
   assert.equal(b.knockbackResist, 0.95);
-  const b4 = createZombie('boss', 0, 0, T4);
-  assert.equal(b4.hp, 7040 * 3.2);
-  assert.equal(b4.speed, 20 * 1.05);
+  // special 不缩放：无论 T4/T13，hp/speed/damage 恒基础值（裁定）
+  for (const t of [T4, T13]) {
+    const bh = createZombie('boss', 0, 0, t);
+    assert.equal(bh.hp, 7040);
+    assert.equal(bh.speed, 20);
+    assert.equal(bh.damage, 40);
+  }
+  // coin 仍随档递增：T5=50×2、T13=50×4（裁定）
+  assert.equal(createZombie('boss', 0, 0, T5).coin, 100);
+  assert.equal(createZombie('boss', 0, 0, T13).coin, 200);
+});
+
+test('createZombie 管线化：默认参数 = 图鉴基础值；冒险关 3 携倍率', () => {
+  const z = createZombie('normal', 0, 0);
+  assert.equal(z.hp, 30);
+  assert.equal(z.maxHp, 30);
+  assert.equal(z.damage, 8);
+  assert.equal(z.coin, 1);
+  const z3 = createZombie('normal', 0, 0, { level: 3, tier: 4, timeSec: 0, mode: 'adventure' });
+  assert.ok(Math.abs(z3.hp - 30 * 2.2) < 1e-9);
+});
+
+test('自爆僵尸携带缩放后 aoe 与行为标记；普通怪不带', () => {
+  const e = createZombie('exploder', 0, 0, { level: 1, tier: 4, timeSec: 0, mode: 'adventure' });
+  assert.equal(e.behavior, 'exploder');
+  assert.deepEqual(e.aoe, { damage: 30, radius: 80 });
+  assert.equal(e.fuseDone, false);
+  const n = createZombie('normal', 0, 0);
+  assert.equal(n.behavior, null);
+  assert.equal(n.aoe, undefined);
 });

@@ -1,7 +1,7 @@
 // 命中结算：弹道 vs 障碍/僵尸（空间网格加速）+ 炸弹 AoE + 火箭爆炸 + 磁电链电。纯逻辑模块，无 DOM 依赖。
 import { circleHit, circleRectHit } from '../core/physics.js';
 import { damageZombie } from '../entities/zombie.js';
-import { MAX_ZOMBIE_R } from '../config/zombies.js';
+import { MAX_ZOMBIE_R } from '../config/bestiary/monsters.js';
 
 // 炸弹/火箭 AoE：线性遍历，alive 且圆心距 ≤ radius + z.r 的僵尸受击（击退 200，方向背离爆心），按死亡回调。
 // skip 可选：跳过指定僵尸（火箭主目标已单独结算，防双算）。

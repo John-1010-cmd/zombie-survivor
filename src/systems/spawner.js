@@ -1,5 +1,5 @@
 import { getTierConfig, GRACE_PERIOD, MAX_ZOMBIES, SURGE_CAP } from '../config/difficulty.js';
-import { ZOMBIES } from '../config/zombies.js';
+import { MONSTERS } from '../config/bestiary/monsters.js';
 import { pickWeighted } from '../core/rng.js';
 import { createZombie } from '../entities/zombie.js';
 
@@ -33,7 +33,7 @@ function pickSpawnPoint(cam, mapSize, rng) {
   return offscreenPoint(cam, mapSize, rng);
 }
 
-export function updateSpawner(sp, time, cam, mapSize, zombies, aliveCount, rng, dt, budgetMult = 1, cfgFn = getTierConfig) {
+export function updateSpawner(sp, time, cam, mapSize, zombies, aliveCount, rng, dt, budgetMult = 1, cfgFn = getTierConfig, scalingCtx = {}) {
   const cfg = cfgFn(time);
   let bps = cfg.budgetPerSec;
   if (time < GRACE_PERIOD) bps = 0.5 + (cfg.budgetPerSec - 0.5) * (time / GRACE_PERIOD);
@@ -54,7 +54,7 @@ export function updateSpawner(sp, time, cam, mapSize, zombies, aliveCount, rng, 
       const y = cy + Math.sin(angle) * r;
       if (x < MAP_MARGIN || x > mapSize - MAP_MARGIN ||
           y < MAP_MARGIN || y > mapSize - MAP_MARGIN) continue; // 落点越界跳过
-      zombies.push(createZombie(pickWeighted(rng, cfg.weights), x, y, cfg));
+      zombies.push(createZombie(pickWeighted(rng, cfg.weights), x, y, { ...scalingCtx, tier: cfg.tier, timeSec: time }));
       spawned++;
     }
     sp.lastTier = cfg.tier;
@@ -65,10 +65,10 @@ export function updateSpawner(sp, time, cam, mapSize, zombies, aliveCount, rng, 
   while (guard++ < 20) {
     if (aliveCount + spawned >= MAX_ZOMBIES) break;
     const type = pickWeighted(rng, cfg.weights);
-    if (sp.budget < ZOMBIES[type].cost) break;
-    sp.budget -= ZOMBIES[type].cost;
+    if (sp.budget < MONSTERS[type].cost) break;
+    sp.budget -= MONSTERS[type].cost;
     const p = pickSpawnPoint(cam, mapSize, rng);
-    zombies.push(createZombie(type, p.x, p.y, cfg));
+    zombies.push(createZombie(type, p.x, p.y, { ...scalingCtx, tier: cfg.tier, timeSec: time }));
     spawned++;
   }
   return spawned;

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/core/rng.js';
-import { ZOMBIES } from '../src/config/zombies.js';
+import { MONSTERS } from '../src/config/bestiary/monsters.js';
 import { MAX_ZOMBIES } from '../src/config/difficulty.js';
 import { createSpawner, updateSpawner, offscreenPoint } from '../src/systems/spawner.js';
 
@@ -77,7 +77,7 @@ test('aliveCount 达到 MAX_ZOMBIES 后不再刷怪，只补足差额', () => {
   assert.equal(zombies2.length, 1);
 });
 
-test('t=1500（9 档）僵尸 hp 用档 8 封顶倍率 ×10', () => {
+test('t=1500 僵尸 hp 按 scaling 管线连续增长', () => {
   const zombies = [];
   const rng = mulberry32(6);
   const sp = createSpawner();
@@ -85,7 +85,26 @@ test('t=1500（9 档）僵尸 hp 用档 8 封顶倍率 ×10', () => {
   const n = updateSpawner(sp, 1500, CAM, 3000, zombies, 0, rng, 1);
   assert.ok(n > 0);
   assert.equal(sp.lastTier, 9);
-  for (const z of zombies) assert.equal(z.hp, ZOMBIES[z.type].hp * 10);
+  // timeSec=1500 → 分钟 25，hp = 基础 × (1 + 25×0.45) = ×12.25（endless；scaling 缺省）
+  for (const z of zombies) assert.equal(z.hp, MONSTERS[z.type].hp * 12.25);
+});
+
+test('真实链路集成：getTierConfig 产出的僵尸数值均为有限正数（防配置缺字段→NaN 回归）', () => {
+  const rng = mulberry32(13);
+  let spawned = 0;
+  for (const t of [0, 60, 180, 600, 1500]) {
+    const zombies = [];
+    const sp = createSpawner();
+    sp.budget = 999;
+    spawned += updateSpawner(sp, t, CAM, 3000, zombies, 0, rng, 1);
+    for (const z of zombies) {
+      for (const field of ['hp', 'speed', 'damage']) {
+        assert.ok(Number.isFinite(z[field]) && z[field] > 0,
+          `t=${t} type=${z.type} ${field}=${z[field]} 应为有限正数`);
+      }
+    }
+  }
+  assert.ok(spawned > 0, '各档应至少刷出僵尸');
 });
 
 test('刷怪点始终落在 [20, mapSize-20] 内（角落镜头强制退化到地图随机点）', () => {

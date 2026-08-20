@@ -1,17 +1,21 @@
-import { ZOMBIES } from '../config/zombies.js';
+import { MONSTERS } from '../config/bestiary/monsters.js';
+import { calcMonsterStats } from '../systems/scaling.js';
 import { slideCircleObstacles } from '../core/physics.js';
 
-export function createZombie(typeId, x, y, tierCfg) {
-  const c = ZOMBIES[typeId];
-  // 档位奖励递增：基值 × min(4, 1+0.25×(tier-1))，档 13 起封顶 ×4（tier 缺省按档 1）
-  const tier = tierCfg.tier ?? 1;
-  const coinMult = Math.min(4, 1 + 0.25 * (tier - 1));
+// 数值统一走 scaling 管线（设计 §2.1）：
+// opts = { level = 冒险关卡序号(无尽/坚守恒 1), tier = 当前档位(coin 递增用), timeSec, mode }
+export function createZombie(typeId, x, y, opts = {}) {
+  const c = MONSTERS[typeId];
+  const s = calcMonsterStats(c, opts);
   return {
     type: typeId, x, y, r: c.radius,
-    hp: c.hp * tierCfg.hpMult, maxHp: c.hp * tierCfg.hpMult,
-    speed: c.speed * tierCfg.speedMult,
-    damage: c.damage, coin: Math.round(c.coin * coinMult),
+    hp: s.hp, maxHp: s.hp,
+    speed: s.speed, damage: s.damage, coin: s.coin,
     knockbackResist: c.knockbackResist,
+    behavior: c.behavior || null,
+    aoe: c.aoe ? { damage: s.aoeDamage, radius: c.aoe.radius } : undefined, // 缩放后 AoE
+    fuseDone: false, // 行为状态位（exploder：引信燃尽标记，behaviors.js 读写）
+    counted: false,  // killZombie 防重（战斗击杀即时结算，行为自杀在清理循环补结算）
     kbx: 0, kby: 0, hitFlash: 0, alive: true,
   };
 }

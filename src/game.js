@@ -26,7 +26,8 @@ import {
   spawnFloater, updateFloaters, renderFloaters,
   spawnExplosion, spawnLightning, updateEffects, renderEffects,
 } from './entities/effects.js';
-import { ZOMBIES } from './config/zombies.js';
+import { MONSTERS } from './config/bestiary/monsters.js';
+import { recordKill } from './core/meta.js';
 import { renderHud } from './systems/hud.js';
 import { showShop } from './ui/shop.js';
 
@@ -44,10 +45,11 @@ const ITEM_DROP_TABLE = [
 ];
 
 export function createGameScene(deps) {
-  const { canvas, input, mode = 'endless', audio, settings, onGameOver } = deps;
+  const { canvas, input, mode = 'endless', audio, settings, meta = null, onGameOver } = deps;
   const modeCfg = MODES[mode] || MODES.endless;
   const cfgFn = modeCfg.getCfg;
   const segLen = mode === 'holdout10' ? HOLDOUT10_SEGMENT : TIER_DURATION;
+  const scalingCtx = { mode, level: 1 }; // 冒险模式在任务 10 改为关卡序号
 
   const rng = mulberry32((Math.random() * 2 ** 31) | 0);
   const map = generateMap(rng);
@@ -166,8 +168,11 @@ export function createGameScene(deps) {
   }
 
   function killZombie(z) {
+    if (z.counted) return;
+    z.counted = true;
     scene.kills++;
     scene.coinsOnGround.push(createCoin(z.x, z.y, z.coin));
+    if (meta) recordKill(meta, z.type); // 图鉴击杀统计：全模式计数（设计 §10）
     for (const d of ITEM_DROP_TABLE) {
       if (rng() < d.chance) { addItem(scene.inventory, d.id, 1); break; }
     }
@@ -241,9 +246,9 @@ export function createGameScene(deps) {
 
   function devSpawnZombie(type) {
     const cfg = cfgFn(scene.time);
-    scene.zombies.push(createZombie(type, player.x + 200, player.y, cfg));
+    scene.zombies.push(createZombie(type, player.x + 200, player.y, { ...scalingCtx, tier: cfg.tier, timeSec: scene.time }));
     aliveCount++;
-    spawnFloater(scene.floaters, player.x + 200, player.y - 30, '已放置 ' + (type === 'boss' ? '守门Boss' : { normal: '普通', fast: '高速', tank: '坦克' }[type]), '#f55');
+    spawnFloater(scene.floaters, player.x + 200, player.y - 30, '已放置 ' + MONSTERS[type].name, '#f55');
   }
 
   function togglePause() {
@@ -306,12 +311,12 @@ export function createGameScene(deps) {
     updateAuxBodies(scene.aux, player, scene.zombies, spawnProjectile, rng, dt);
 
     const budgetMult = modeCfg.surgeFrom && scene.time >= modeCfg.surgeFrom ? 1.5 : 1;
-    aliveCount += updateSpawner(spawner, scene.time, camera, MAP_SIZE, scene.zombies, aliveCount, rng, dt, budgetMult, cfgFn);
+    aliveCount += updateSpawner(spawner, scene.time, camera, MAP_SIZE, scene.zombies, aliveCount, rng, dt, budgetMult, cfgFn, scalingCtx);
 
     if (modeCfg.bossAt && !bossSpawned && scene.time >= modeCfg.bossAt) {
       bossSpawned = true;
       const p = offscreenPoint(camera, MAP_SIZE, rng);
-      scene.zombies.push(createZombie('boss', p.x, p.y, cfgFn(scene.time)));
+      scene.zombies.push(createZombie('boss', p.x, p.y, { ...scalingCtx, tier: cfgFn(scene.time).tier, timeSec: scene.time }));
       aliveCount++;
       sound('alarm');
       shake(8);
@@ -404,9 +409,10 @@ export function createGameScene(deps) {
     if (shopLatch && !inShopRange) shopLatch = false;
     if (!shopOpen && !shopLatch && inShopRange) openShop();
 
-    // 死僵尸 swap-remove
+    // 死僵尸 swap-remove（行为自杀的在此补 killZombie 结算掉落/计数/AoE）
     for (let i = scene.zombies.length - 1; i >= 0; i--) {
       if (!scene.zombies[i].alive) {
+        if (!scene.zombies[i].counted) killZombie(scene.zombies[i]);
         scene.zombies[i] = scene.zombies[scene.zombies.length - 1];
         scene.zombies.pop();
         aliveCount--;
@@ -567,8 +573,8 @@ export function createGameScene(deps) {
 
     // 僵尸
     for (const z of scene.zombies) {
-      const c = ZOMBIES[z.type];
-      ctx.fillStyle = c.color;
+      const c = MONSTERS[z.type];
+      ctx.fillStyle = c.visual.color;
       ctx.beginPath();
       ctx.arc(z.x, z.y, z.r, 0, Math.PI * 2);
       ctx.fill();
