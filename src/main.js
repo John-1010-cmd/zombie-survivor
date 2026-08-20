@@ -82,6 +82,10 @@ function toggleDev() {
     showDev(devEl, {
       onCoins: n => currentScene.devAddCoins(n),
       onSpawn: type => currentScene.devSpawnZombie(type),
+      onGold: n => { addGold(meta, n); saveMeta(meta); },
+      onUnlockLevels: () => { meta.adventure.unlocked = ADVENTURE_LEVELS.length; saveMeta(meta); },
+      onStartMode: m => { closeDev(); hideOverlays(); startGame(m); }, // 调试入口：坚守隐藏期间仍可回归验证
+      onStress: () => { if (currentScene) currentScene.devStress(); },
       onClose: closeDev,
     });
   } else {

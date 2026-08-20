@@ -20,7 +20,7 @@ import { createTurret, updateTurret } from './entities/turret.js';
 import { createTeslaBall, updateTeslaBall } from './entities/teslaball.js';
 import { createWallSegment } from './entities/wall.js';
 import { ITEMS } from './config/items.js';
-import { MODES, TIER_DURATION } from './config/difficulty.js';
+import { MODES, TIER_DURATION, MAX_ZOMBIES } from './config/difficulty.js';
 import { ADVENTURE_TIER_DURATION, ADVENTURE_DURATION, adventureLevelById, adventureLevelIndex, makeAdventureCfg } from './config/adventure.js';
 import {
   spawnParticles, updateParticles, renderParticles,
@@ -122,6 +122,7 @@ export function createGameScene(deps) {
     applyEarlyTier,
     devAddCoins,
     devSpawnZombie,
+    devStress,
     quitRun,
   };
 
@@ -276,6 +277,19 @@ export function createGameScene(deps) {
     scene.zombies.push(createZombie(type, player.x + 200, player.y, { ...scalingCtx, tier: cfg.tier, timeSec: scene.time }));
     aliveCount++;
     spawnFloater(scene.floaters, player.x + 200, player.y - 30, '已放置 ' + MONSTERS[type].name, '#f55');
+  }
+
+  // 性能压测（dev 菜单）：填满 400 怪 + 满强化机枪（自动开火近似维持约 400 活跃弹道）。手动验收，不进单测。
+  function devStress() {
+    scene.weapon = createWeapon('mg');
+    scene.weapon.enhance = { damage: 8, fireRate: 8, projectiles: 8, range: 8, fragCount: 0, fragDamage: 0, chainLen: 0, chainDmg: 0 };
+    const cfg = cfgFn(scene.time);
+    while (aliveCount < MAX_ZOMBIES) {
+      const p = offscreenPoint(camera, MAP_SIZE, rng);
+      scene.zombies.push(createZombie('normal', p.x, p.y, { ...scalingCtx, tier: cfg.tier, timeSec: scene.time }));
+      aliveCount++;
+    }
+    spawnFloater(scene.floaters, player.x, player.y - 40, '压测中：400 怪 + 满强化机枪', '#f55');
   }
 
   function togglePause() {
