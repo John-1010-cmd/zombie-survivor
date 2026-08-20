@@ -1,29 +1,39 @@
 // 打击感特效：粒子爆发 + 浮动伤害数字。纯逻辑模块，无 DOM 依赖；
 // rng 由调用方注入，渲染函数只接收外部 ctx。
-export function spawnParticles(arr, x, y, color, n, rng) {
-  for (let i = 0; i < n; i++) {
-    const angle = rng() * Math.PI * 2;
-    const speed = 60 + rng() * 120;
-    arr.push({
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      life: 0.4, maxLife: 0.4,
-      color,
-      r: 2 + rng() * 2,
-    });
-  }
+import { createPool } from '../core/pool.js';
+
+// 粒子对象池（设计 §9.3：禁止每帧对象分配）。死亡归还、生成复用。
+// 随机参数分布与旧非池化实现一致：speed 60–180、life 0.4、r 2–4。
+export function createParticlePool() {
+  return createPool(
+    () => ({ x: 0, y: 0, vx: 0, vy: 0, life: 0, maxLife: 0, color: '#fff', r: 2 }),
+    (p, x, y, color, rng) => {
+      const angle = rng() * Math.PI * 2;
+      const speed = 60 + rng() * 120;
+      p.x = x; p.y = y;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed;
+      p.life = 0.4; p.maxLife = 0.4;
+      p.color = color;
+      p.r = 2 + rng() * 2;
+    },
+  );
 }
 
-export function updateParticles(arr, dt) {
+export function spawnParticles(pool, arr, x, y, color, n, rng) {
+  for (let i = 0; i < n; i++) arr.push(pool.obtain(x, y, color, rng));
+}
+
+export function updateParticles(pool, arr, dt) {
   for (let i = arr.length - 1; i >= 0; i--) {
     const p = arr[i];
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.life -= dt;
-    if (p.life <= 0) { // swap-remove：末位元素换到 i 后 pop，原地压缩
+    if (p.life <= 0) { // swap-remove：末位元素换到 i 后 pop，死亡粒子归还池
       arr[i] = arr[arr.length - 1];
       arr.pop();
+      pool.release(p);
     }
   }
 }
@@ -46,12 +56,13 @@ export function updateFloaters(arr, dt) {
 
 // ---- 弹道特效：爆炸环 + 磁电闪电（迭代 04）。纯逻辑，rng 注入。----
 
-// 爆炸：扩张描边圆（r0→r1）+ 16 个橙色粒子（复用 spawnParticles）。
-export function spawnExplosion(arr, x, y, radius, rng) {
+// 爆炸：扩张描边圆（r0→r1）进 effectsArr + 16 个橙色粒子经 pool 进 particlesArr。
+// （修正旧实现：粒子被推进同一 effects 数组，renderEffects 不识别其类型 → 永不绘制的死代码）
+export function spawnExplosion(pool, effectsArr, particlesArr, x, y, radius, rng) {
   // 迭代 05：r0/r1 ±6px 抖动 + 旋转相位，同位置多环错开可见（特效随弹道数叠加）
   const j = () => (rng() * 2 - 1) * 6;
-  arr.push({ type: 'ring', x, y, r0: 12 + j(), r1: radius + j(), life: 0.25, maxLife: 0.25, phase: rng() * Math.PI * 2 });
-  spawnParticles(arr, x, y, '#f80', 16, rng);
+  effectsArr.push({ type: 'ring', x, y, r0: 12 + j(), r1: radius + j(), life: 0.25, maxLife: 0.25, phase: rng() * Math.PI * 2 });
+  spawnParticles(pool, particlesArr, x, y, '#f80', 16, rng);
 }
 
 // 磁电闪电：起终点间 5 段折线（共 6 个点），中间 4 点沿直线插值并加垂直抖动 ±14px。

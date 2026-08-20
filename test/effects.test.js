@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/core/rng.js';
-import { spawnParticles, updateParticles, spawnFloater, updateFloaters, spawnExplosion, spawnLightning, updateEffects } from '../src/entities/effects.js';
+import { createParticlePool, spawnParticles, updateParticles, spawnFloater, updateFloaters, spawnExplosion, spawnLightning, updateEffects } from '../src/entities/effects.js';
 
 test('spawnParticles 生成 n 个且颜色/坐标正确', () => {
+  const pool = createParticlePool();
   const arr = [];
-  spawnParticles(arr, 100, 200, '#ff5533', 10, mulberry32(1));
+  spawnParticles(pool, arr, 100, 200, '#ff5533', 10, mulberry32(1));
   assert.equal(arr.length, 10);
   for (const p of arr) {
     assert.equal(p.x, 100);
@@ -20,35 +21,39 @@ test('spawnParticles 生成 n 个且颜色/坐标正确', () => {
 });
 
 test('同种子粒子序列可复现', () => {
+  const poolA = createParticlePool(), poolB = createParticlePool();
   const a = [], b = [];
-  spawnParticles(a, 0, 0, '#fff', 8, mulberry32(42));
-  spawnParticles(b, 0, 0, '#fff', 8, mulberry32(42));
+  spawnParticles(poolA, a, 0, 0, '#fff', 8, mulberry32(42));
+  spawnParticles(poolB, b, 0, 0, '#fff', 8, mulberry32(42));
   assert.deepEqual(a, b);
 });
 
 test('粒子按 vx/vy 位移且 life 递减', () => {
+  const pool = createParticlePool();
   const arr = [{ x: 0, y: 0, vx: 100, vy: 50, life: 0.4, maxLife: 0.4, color: '#fff', r: 2 }];
-  updateParticles(arr, 0.1);
+  updateParticles(pool, arr, 0.1);
   assert.equal(arr[0].x, 10);
   assert.equal(arr[0].y, 5);
   assert.ok(Math.abs(arr[0].life - 0.3) < 1e-9);
 });
 
 test('swap-remove：死亡粒子移除、存活粒子保留', () => {
+  const pool = createParticlePool();
   const arr = [
     { x: 0, y: 0, vx: 0, vy: 0, life: 0.4, maxLife: 0.4, color: '#fff', r: 2 },
     { x: 0, y: 0, vx: 0, vy: 0, life: 0.1, maxLife: 0.4, color: '#fff', r: 2 },
     { x: 0, y: 0, vx: 0, vy: 0, life: 0.3, maxLife: 0.4, color: '#fff', r: 2 },
   ];
-  updateParticles(arr, 0.2); // 中间粒子 0.1-0.2 <= 0 死亡
+  updateParticles(pool, arr, 0.2); // 中间粒子 0.1-0.2 <= 0 死亡
   assert.equal(arr.length, 2);
   for (const p of arr) assert.ok(p.life > 0);
 });
 
 test('life 耗尽后数组收缩且无残留', () => {
+  const pool = createParticlePool();
   const arr = [];
-  spawnParticles(arr, 0, 0, '#fff', 5, mulberry32(2));
-  updateParticles(arr, 0.5); // 0.4 - 0.5 <= 0，全部耗尽
+  spawnParticles(pool, arr, 0, 0, '#fff', 5, mulberry32(2));
+  updateParticles(pool, arr, 0.5); // 0.4 - 0.5 <= 0，全部耗尽
   assert.equal(arr.length, 0);
 });
 
@@ -67,11 +72,13 @@ test('floater 随时间上浮（y 减小）且最终移除', () => {
 
 // ---------- 迭代04：弹道特效 ----------
 
-test('spawnExplosion：环对象字段正确 + 16 个橙色粒子（迭代 05：r0/r1 抖动 ±6、phase）', () => {
-  const arr = [];
-  spawnExplosion(arr, 300, 200, 90, mulberry32(7));
-  assert.equal(arr.length, 17); // 1 环 + 16 粒子
-  const ring = arr[0];
+test('spawnExplosion：环对象进 effectsArr + 16 个橙色粒子经 pool 进 particlesArr（迭代 05：r0/r1 抖动 ±6、phase）', () => {
+  const pool = createParticlePool();
+  const effectsArr = [], particlesArr = [];
+  spawnExplosion(pool, effectsArr, particlesArr, 300, 200, 90, mulberry32(7));
+  assert.equal(effectsArr.length, 1); // 1 环
+  assert.equal(particlesArr.length, 16); // 16 粒子
+  const ring = effectsArr[0];
   assert.equal(ring.type, 'ring');
   assert.equal(ring.x, 300);
   assert.equal(ring.y, 200);
@@ -80,15 +87,25 @@ test('spawnExplosion：环对象字段正确 + 16 个橙色粒子（迭代 05：
   assert.ok(ring.r0 >= 12 - 6 && ring.r0 <= 12 + 6, `r0=${ring.r0}`);
   assert.ok(ring.r1 >= 90 - 6 && ring.r1 <= 90 + 6, `r1=${ring.r1}`);
   assert.ok(ring.phase >= 0 && ring.phase < Math.PI * 2, `phase=${ring.phase}`);
-  const particles = arr.slice(1);
-  assert.equal(particles.length, 16);
-  for (const p of particles) {
+  for (const p of particlesArr) {
     assert.equal(p.color, '#f80');
     assert.equal(p.x, 300);
     assert.equal(p.y, 200);
     assert.equal(p.life, 0.4);
     assert.equal(p.maxLife, 0.4);
   }
+});
+
+test('粒子池：obtain/release 复用对象，粒子死亡归还池', () => {
+  const pool = createParticlePool();
+  const arr = [];
+  spawnParticles(pool, arr, 0, 0, '#fff', 10, () => 0.5);
+  assert.equal(arr.length, 10);
+  updateParticles(pool, arr, 1); // life 0.4 → 全部死亡归还
+  assert.equal(arr.length, 0);
+  assert.ok(pool.size >= 10);
+  spawnParticles(pool, arr, 0, 0, '#fff', 10, () => 0.5);
+  assert.equal(pool.size, 0); // 复用后池余 0（10 进 10 出）
 });
 
 test('spawnLightning：6 个点、端点精确、中间点直线插值 + 垂直抖动 ±14', () => {

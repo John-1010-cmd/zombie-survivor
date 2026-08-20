@@ -23,12 +23,13 @@ import { ITEMS } from './config/items.js';
 import { MODES, TIER_DURATION, MAX_ZOMBIES } from './config/difficulty.js';
 import { ADVENTURE_TIER_DURATION, ADVENTURE_DURATION, adventureLevelById, adventureLevelIndex, makeAdventureCfg } from './config/adventure.js';
 import {
+  createParticlePool,
   spawnParticles, updateParticles, renderParticles,
   spawnFloater, updateFloaters, renderFloaters,
   spawnExplosion, spawnLightning, updateEffects, renderEffects,
 } from './entities/effects.js';
 import { MONSTERS } from './config/bestiary/monsters.js';
-import { renderZombie } from './entities/render.js';
+import { renderZombie, renderProjectiles } from './entities/render.js';
 import { BEHAVIORS } from './systems/behaviors.js';
 import { recordKill } from './core/meta.js';
 import { renderHud } from './systems/hud.js';
@@ -67,6 +68,8 @@ export function createGameScene(deps) {
     () => createProjectile(),
     (p, opts) => resetProjectile(p, opts),
   );
+  // 粒子对象池（设计 §9.3）：createGameScene 闭包级，全部粒子调用点可见；随 scene 一起 GC
+  const particlePool = createParticlePool();
 
   const projectiles = [];
   let aliveCount = 0;
@@ -129,7 +132,7 @@ export function createGameScene(deps) {
 
   function fxExplosion(x, y, radius) {
     if (scene.effects.length < MAX_EFFECTS)
-      spawnExplosion(scene.effects, x, y, radius, rng);
+      spawnExplosion(particlePool, scene.effects, scene.particles, x, y, radius, rng);
   }
 
   function fxChain(path) {
@@ -173,8 +176,11 @@ export function createGameScene(deps) {
     }
   }
 
-  // 主武器开火入口（带射击音）：包一层标记来源
+  // 主武器开火入口（带射击音）：包一层标记来源；枪口闪光（设计 §9.2：muzzle 处 2 粒子）
   function playerSpawnProjectile(opts) {
+    const mx = player.x + Math.cos(opts.angle) * player.r;
+    const my = player.y + Math.sin(opts.angle) * player.r;
+    spawnParticles(particlePool, scene.particles, mx, my, opts.visual?.color ?? '#ffe066', 2, rng);
     spawnProjectile({ ...opts, fromPlayer: true });
   }
 
@@ -205,11 +211,14 @@ export function createGameScene(deps) {
       if (rng() < d.chance) { addItem(scene.inventory, d.id, 1); break; }
     }
     if (scene.particles.length < MAX_PARTICLES)
-      spawnParticles(scene.particles, z.x, z.y, '#5eff8a', 12, rng);
+      spawnParticles(particlePool, scene.particles, z.x, z.y, '#5eff8a', 12, rng);
     if (z.behavior) BEHAVIORS[z.behavior]?.onDeath?.(z, behaviorCtx()); // 行为死亡钩子（自爆 AoE 在此结算）
   }
 
-  function hitZombie(z, dmg) {
+  function hitZombie(z, dmg, visual) {
+    // 命中粒子喷溅（visual.hitParticles 驱动）：放在 damageNumbers 早退之前——设置项只守护 floater
+    if (visual?.hitParticles)
+      spawnParticles(particlePool, scene.particles, z.x, z.y, visual.color ?? '#ffe066', visual.hitParticles, rng);
     if (settings && !settings.damageNumbers) return;
     if (scene.floaters.length < MAX_FLOATERS)
       spawnFloater(scene.floaters, z.x, z.y - 20, String(Math.round(dmg)), '#ffd75e');
@@ -416,7 +425,7 @@ export function createGameScene(deps) {
 
     resolveProjectileHits(projectiles, hash, map.obstacles,
       killZombie,
-      (z, p) => hitZombie(z, p.damage),
+      (z, p) => hitZombie(z, p.damage, p.visual),
       scene.zombies, // allZombies：tesla 链电/aoe 爆炸遍历用
       {
         onExplode: fxExplosion,
@@ -504,7 +513,7 @@ export function createGameScene(deps) {
     }
 
     updateCamera(camera, player, MAP_SIZE, rng, dt);
-    updateParticles(scene.particles, dt);
+    updateParticles(particlePool, scene.particles, dt);
     updateFloaters(scene.floaters, dt);
     updateEffects(scene.effects, dt);
   }
@@ -664,16 +673,8 @@ export function createGameScene(deps) {
     ctx.lineTo(player.x + Math.cos(player.facing) * player.r, player.y + Math.sin(player.facing) * player.r);
     ctx.stroke();
 
-    // 弹道：常规黄 / aoe 橙 / 链电青
-    for (const p of projectiles) {
-      ctx.strokeStyle = p.aoe > 0 ? '#f80' : p.chain > 0 ? '#5ef' : '#ffe066';
-      ctx.lineWidth = p.aoe > 0 ? 3 : 2;
-      const dx = Math.cos(p.angle) * 4, dy = Math.sin(p.angle) * 4;
-      ctx.beginPath();
-      ctx.moveTo(p.x - dx, p.y - dy);
-      ctx.lineTo(p.x + dx, p.y + dy);
-      ctx.stroke();
-    }
+    // 弹道：visual 驱动的几何特效 + 渐隐拖尾（设计 §9.2，entities/render.js）
+    renderProjectiles(ctx, projectiles);
 
     // 电磁球（迭代 05）：青色电球 + 电弧
     for (const b of scene.teslaBalls) {

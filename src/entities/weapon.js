@@ -72,6 +72,7 @@ function fire(w, owner, target, stats, spawnProjectile, rng) {
       aoe: stats.aoe,
       arc: stats.arc,
       chain: stats.chain,
+      visual: WEAPONS[w.id].visual, // 图鉴视觉描述（设计 §9.2），渲染层按 visual 绘制
     };
     // 专属弹道：榴弹带 frags（二次爆炸参数），磁电带链增强乘区
     if (w.id === 'grenade') {

@@ -8,7 +8,29 @@ test('createProjectile 返回默认字段', () => {
     x: 0, y: 0, angle: 0, speed: 0, damage: 0, range: 0,
     traveled: 0, pierce: 0, knockback: 0, aoe: 0, arc: false, chain: 0,
     frags: null, chainMult: 0.8, chainDmgMult: 1, alive: true,
+    visual: null,
+    trail: Array.from({ length: 8 }, () => ({ x: 0, y: 0 })),
+    trailHead: 0, trailLen: 0,
   });
+});
+
+test('拖尾环形缓冲：≤8 点、复用预分配数组、无每帧分配', () => {
+  const p = createProjectile();
+  resetProjectile(p, { x: 0, y: 0, angle: 0, speed: 100, range: 10000 });
+  assert.equal(p.trailLen, 0);
+  for (let i = 0; i < 20; i++) updateProjectile(p, 0.1);
+  assert.ok(p.trailLen <= 8);
+  assert.equal(p.trail.length, 8); // 预分配定长
+  const head = (p.trailHead - 1 + 8) % 8;
+  assert.ok(p.trail[head].x < p.x);
+});
+
+test('弹道携带 visual（武器图鉴视觉描述），缺省为 null', () => {
+  const p = createProjectile();
+  resetProjectile(p, { x: 0, y: 0, angle: 0, speed: 1, range: 1, visual: { bulletShape: 'needle', color: '#aef', trail: 0.9 } });
+  assert.equal(p.visual.bulletShape, 'needle');
+  const q = createProjectile();
+  assert.equal(q.visual, null);
 });
 
 test('resetProjectile 应用 opts 并重置 traveled/alive', () => {
