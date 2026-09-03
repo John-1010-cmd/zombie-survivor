@@ -13,6 +13,7 @@ import { showUpgrades } from './ui/upgrades.js';
 import { showBestiary } from './ui/bestiary.js';
 import { loadMeta, saveMeta, addGold, recordAdventureResult } from './core/meta.js';
 import { ADVENTURE_LEVELS, adventureLevelById, adventureLevelIndex, clearGoldReward, failGoldReward } from './config/adventure.js';
+import { initPalette } from './config/palette.js';
 
 const canvas = document.getElementById('game');
 const menuEl = document.getElementById('menu');
@@ -24,6 +25,7 @@ const levelsEl = document.getElementById('levels');
 const bestiaryEl = document.getElementById('bestiary');
 const upgradesEl = document.getElementById('upgrades');
 
+initPalette();
 const engine = createEngine(canvas);
 const settings = loadSettings();
 const audio = createAudio(settings);
@@ -102,6 +104,7 @@ function startGame(mode, levelId = null) {
   hideOverlays();
   currentScene = createGameScene({
     canvas,
+    viewport: engine.getViewport(),
     input,
     mode,
     levelId,

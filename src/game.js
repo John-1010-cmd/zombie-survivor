@@ -49,7 +49,17 @@ const ITEM_DROP_TABLE = [
 ];
 
 export function createGameScene(deps) {
-  const { canvas, input, mode = 'endless', levelId = null, audio, settings, meta = null, onGameOver } = deps;
+  const {
+    canvas,
+    viewport: initialViewport = null,
+    input,
+    mode = 'endless',
+    levelId = null,
+    audio,
+    settings,
+    meta = null,
+    onGameOver,
+  } = deps;
   const isAdventure = mode === 'adventure';
   const advLevel = isAdventure ? adventureLevelById(levelId) : null;
   if (isAdventure && !advLevel) throw new Error('未知冒险关卡: ' + levelId);
@@ -61,7 +71,11 @@ export function createGameScene(deps) {
   const rng = mulberry32((Math.random() * 2 ** 31) | 0);
   const map = generateMap(rng);
   const player = createPlayer(map.spawn.x, map.spawn.y);
-  const camera = createCamera(canvas.width, canvas.height);
+  const viewport = {
+    width: Math.max(1, initialViewport?.width ?? canvas.clientWidth ?? canvas.width ?? 1),
+    height: Math.max(1, initialViewport?.height ?? canvas.clientHeight ?? canvas.height ?? 1),
+  };
+  const camera = createCamera(viewport.width, viewport.height);
   const hash = createSpatialHash(64);
   const spawner = createSpawner();
   const projPool = createPool(
@@ -86,8 +100,17 @@ export function createGameScene(deps) {
   let prevTier = cfgFn(0).tier; // 横幅触发：档位变化检测（迭代 06）
   let auxSpawnedSignature = ''; // counts 变化检测（购买后重建载体）
 
+  function setViewport(width, height) {
+    viewport.width = Math.max(1, width);
+    viewport.height = Math.max(1, height);
+    camera.setViewport(viewport.width, viewport.height);
+  }
+
   const scene = {
-    update, render,
+    update,
+    render,
+    viewport,
+    setViewport,
     paused: false,
     player,
     mode,
@@ -521,9 +544,11 @@ export function createGameScene(deps) {
     updateEffects(scene.effects, dt);
   }
 
-  function render(ctx) {
+  function render(ctx, renderViewport = viewport) {
+    const W = renderViewport.width;
+    const H = renderViewport.height;
     ctx.fillStyle = '#1a2418';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, W, H);
 
     ctx.save();
     ctx.translate(-camera.x + camera.offX, -camera.y + camera.offY);
@@ -705,16 +730,16 @@ export function createGameScene(deps) {
       const alpha = 0.45 + 0.35 * Math.sin(scene.time * 8); // 缓慢闪烁
       ctx.globalAlpha = Math.max(0.15, Math.min(1, alpha));
       ctx.fillStyle = 'rgba(0,0,0,.55)';
-      ctx.fillRect(canvas.width / 2 - 220, 60, 440, 56);
+      ctx.fillRect(W / 2 - 220, 60, 440, 56);
       ctx.fillStyle = '#ffd75e';
       ctx.font = '34px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(scene.banner.text, canvas.width / 2, 99);
+      ctx.fillText(scene.banner.text, W / 2, 99);
       ctx.textAlign = 'left';
       ctx.globalAlpha = 1;
     }
 
-    renderHud(ctx, scene);
+    renderHud(ctx, scene, renderViewport);
   }
 
   return scene;
