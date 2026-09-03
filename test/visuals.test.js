@@ -1,8 +1,9 @@
-// test/visuals.test.js —— 统一视觉注册表：形状、部件、未知 ID 回退（设计 §1.2/§1.4）
+// test/visuals.test.js —— 统一视觉注册表：图片预加载、失败回退与离屏缓存（设计 §1.2/§1.4/§9）
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  drawVisual, registerPart, registerShape, SHAPES, PARTS,
+  clearCaches, drawVisual, getVisualCanvas, preloadVisuals,
+  registerImage, registerPart, registerShape, SHAPES, PARTS,
 } from '../src/core/visuals.js';
 import { SHAPES as facadeShapes } from '../src/entities/render.js';
 
@@ -20,7 +21,80 @@ function makeContext() {
     save() { calls.push(['save']); },
     restore() { calls.push(['restore']); },
     translate(...args) { calls.push(['translate', ...args]); },
+    drawImage(...args) { calls.push(['drawImage', ...args]); },
   };
+}
+
+function makeCanvasFactory() {
+  const created = [];
+  return {
+    created,
+    createCanvas(width, height) {
+      const ctx = makeContext();
+      const canvas = {
+        width,
+        height,
+        getContext(type) {
+          assert.equal(type, '2d');
+          return ctx;
+        },
+      };
+      created.push({ canvas, ctx });
+      return canvas;
+    },
+  };
+}
+
+class FakeImage {
+  static instances = [];
+
+  constructor() {
+    FakeImage.instances.push(this);
+  }
+
+  set src(url) {
+    this.url = url;
+    queueMicrotask(() => {
+      if (url.includes('missing')) this.onerror?.(new Error('404'));
+      else this.onload?.();
+    });
+  }
+
+  decode() {
+    return Promise.resolve();
+  }
+}
+
+class ControlledImage {
+  static instances = [];
+  static deferCounts = new Map();
+
+  constructor() {
+    ControlledImage.instances.push(this);
+  }
+
+  set src(url) {
+    this.url = url;
+    const remaining = ControlledImage.deferCounts.get(url) ?? 0;
+    this.deferred = remaining > 0;
+    if (this.deferred) ControlledImage.deferCounts.set(url, remaining - 1);
+    else queueMicrotask(() => this.onload?.());
+  }
+
+  decode() {
+    if (!this.deferred) return Promise.resolve();
+    return new Promise(resolve => {
+      this.resolveDecode = resolve;
+    });
+  }
+
+  finishLoad() {
+    this.onload?.();
+  }
+
+  finishDecode() {
+    this.resolveDecode?.();
+  }
 }
 
 test('render.js 兼容出口与 visuals.js 共享同一个 SHAPES 注册表', () => {
@@ -93,4 +167,172 @@ test('未知视觉 ID 回退到 circle，且同一 ID 只 console.warn 一次', 
   assert.equal(arcs.length, 2);
   assert.deepEqual(arcs[0], ['arc', 3, 4, 5, 0, Math.PI * 2]);
   assert.equal(ctx.calls.filter(([name]) => name === 'fill').length, 2);
+});
+
+test('registerImage + preloadVisuals：成功解码后复用同一个 Image，clearCaches 后才重新加载', async () => {
+  clearCaches();
+  const originalImage = globalThis.Image;
+  FakeImage.instances = [];
+  globalThis.Image = FakeImage;
+  const id = 'test.image.ok';
+  const url = '/assets/test.png';
+  try {
+    registerImage(id, url);
+    await preloadVisuals();
+    assert.equal(FakeImage.instances.filter(image => image.url === url).length, 1);
+
+    await preloadVisuals();
+    assert.equal(FakeImage.instances.filter(image => image.url === url).length, 1);
+
+    const ctx = makeContext();
+    assert.equal(drawVisual(ctx, id, 10, 12, 8), true);
+    const image = FakeImage.instances.find(item => item.url === url);
+    const drawCall = ctx.calls.find(([name]) => name === 'drawImage');
+    assert.equal(drawCall[1], image);
+    assert.deepEqual(drawCall.slice(2), [2, 4, 16, 16]);
+
+    clearCaches();
+    await preloadVisuals();
+    assert.equal(FakeImage.instances.filter(item => item.url === url).length, 2);
+  } finally {
+    if (originalImage === undefined) delete globalThis.Image;
+    else globalThis.Image = originalImage;
+  }
+});
+
+test('图片加载失败回退 circle，且失败只输出一次 warning', async () => {
+  clearCaches();
+  const originalImage = globalThis.Image;
+  const originalWarn = console.warn;
+  const warnings = [];
+  FakeImage.instances = [];
+  globalThis.Image = FakeImage;
+  console.warn = (...args) => warnings.push(args.join(' '));
+  const id = 'test.image.missing';
+  try {
+    registerImage(id, '/assets/missing.png');
+    await preloadVisuals();
+
+    const factory = makeCanvasFactory();
+    const canvas = getVisualCanvas(id, 32, { createCanvas: factory.createCanvas });
+    assert.equal(canvas.width, 32);
+    assert.equal(canvas.height, 32);
+    assert.equal(factory.created.length, 1);
+    assert.equal(factory.created[0].ctx.calls.filter(([name]) => name === 'arc').length, 1);
+
+    drawVisual(factory.created[0].ctx, id, 16, 16, 8);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /test\.image\.missing/);
+  } finally {
+    console.warn = originalWarn;
+    if (originalImage === undefined) delete globalThis.Image;
+    else globalThis.Image = originalImage;
+  }
+});
+
+test('getVisualCanvas 按 id+size 命中；同尺寸复用、不同尺寸隔离，clearCaches 后重建', () => {
+  clearCaches();
+  const factory = makeCanvasFactory();
+  const first = getVisualCanvas('circle', 32, { createCanvas: factory.createCanvas });
+  const same = getVisualCanvas('circle', 32, { createCanvas: factory.createCanvas });
+  const different = getVisualCanvas('circle', 48, { createCanvas: factory.createCanvas });
+
+  assert.equal(first, same);
+  assert.notEqual(first, different);
+  assert.equal(factory.created.length, 2);
+  assert.deepEqual([first.width, first.height], [32, 32]);
+  assert.deepEqual([different.width, different.height], [48, 48]);
+
+  clearCaches();
+  const rebuilt = getVisualCanvas('circle', 32, { createCanvas: factory.createCanvas });
+  assert.notEqual(rebuilt, first);
+  assert.equal(factory.created.length, 3);
+});
+
+test('无 Image/DOM 时 preloadVisuals 不抛错，getVisualCanvas 返回安全尺寸对象', async () => {
+  clearCaches();
+  const originalImage = globalThis.Image;
+  globalThis.Image = undefined;
+  try {
+    registerImage('test.image.no-runtime', '/assets/no-runtime.png');
+    await assert.doesNotReject(preloadVisuals());
+    const canvas = getVisualCanvas('circle', 24);
+    assert.equal(canvas.width, 24);
+    assert.equal(canvas.height, 24);
+    assert.equal(typeof canvas.getContext, 'function');
+  } finally {
+    if (originalImage === undefined) delete globalThis.Image;
+    else globalThis.Image = originalImage;
+  }
+});
+
+test('图片预加载成功后失效已缓存的 fallback Canvas', async () => {
+  clearCaches();
+  const originalImage = globalThis.Image;
+  const id = 'test.image.cache-invalidation';
+  const url = '/assets/cache-invalidation.png';
+  const factory = makeCanvasFactory();
+  ControlledImage.instances = [];
+  ControlledImage.deferCounts = new Map([[url, 1]]);
+  globalThis.Image = ControlledImage;
+  try {
+    registerImage(id, url);
+    const fallback = getVisualCanvas(id, 32, { createCanvas: factory.createCanvas });
+    const preload = preloadVisuals();
+    const image = ControlledImage.instances.find(item => item.url === url);
+    assert.ok(image);
+    image.finishLoad();
+    image.finishDecode();
+    await preload;
+
+    const canvas = getVisualCanvas(id, 32, { createCanvas: factory.createCanvas });
+    assert.notEqual(canvas, fallback);
+    assert.equal(factory.created.length, 2);
+    const drawCall = factory.created[1].ctx.calls.find(([name]) => name === 'drawImage');
+    assert.equal(drawCall[1], image);
+  } finally {
+    ControlledImage.deferCounts = new Map();
+    if (originalImage === undefined) delete globalThis.Image;
+    else globalThis.Image = originalImage;
+  }
+});
+
+test('清理并重新登记后忽略过期图片回调', async () => {
+  clearCaches();
+  const originalImage = globalThis.Image;
+  const id = 'test.image.stale-callback';
+  const oldUrl = '/assets/old.png';
+  const newUrl = '/assets/new.png';
+  ControlledImage.instances = [];
+  ControlledImage.deferCounts = new Map([[oldUrl, 1], [newUrl, 1]]);
+  globalThis.Image = ControlledImage;
+  try {
+    registerImage(id, oldUrl);
+    const oldPreload = preloadVisuals();
+    const oldImage = ControlledImage.instances.find(item => item.url === oldUrl);
+    assert.ok(oldImage);
+
+    clearCaches();
+    registerImage(id, newUrl);
+    const newPreload = preloadVisuals();
+    const newImage = ControlledImage.instances.find(item => item.url === newUrl);
+    assert.ok(newImage);
+    newImage.finishLoad();
+    newImage.finishDecode();
+    await newPreload;
+
+    oldImage.finishLoad();
+    oldImage.finishDecode();
+    await oldPreload;
+
+    const ctx = makeContext();
+    assert.equal(drawVisual(ctx, id, 10, 12, 8), true);
+    const drawCall = ctx.calls.find(([name]) => name === 'drawImage');
+    assert.equal(drawCall[1], newImage);
+    assert.equal(drawCall[1].url, newUrl);
+  } finally {
+    ControlledImage.deferCounts = new Map();
+    if (originalImage === undefined) delete globalThis.Image;
+    else globalThis.Image = originalImage;
+  }
 });
