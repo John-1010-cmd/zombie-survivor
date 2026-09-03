@@ -4,6 +4,8 @@
 // 数值口径：展示图鉴基础值（关卡 1、局内 0 分钟），局内实际值随关卡与时间增长。
 import { playableMonsters } from '../config/bestiary/monsters.js';
 import { WEAPONS } from '../config/bestiary/weapons.js';
+import { createIconCanvas } from './icon.js';
+import { attachTooltips } from './tooltip.js';
 
 export function monsterView(m, bestiaryKills) {
   const kills = bestiaryKills[m.id] ?? 0;
@@ -18,7 +20,7 @@ export function monsterView(m, bestiaryKills) {
 export function weaponView(w, weaponLevels) {
   const level = weaponLevels[w.id] ?? 0;
   return {
-    id: w.id, name: w.name, desc: w.desc, color: w.visual.color,
+    id: w.id, name: w.name, desc: w.desc, icon: w.icon,
     level, maxed: level >= 10,
     damage: w.damage, nextDamage: w.damage * (1 + 0.2 * (level + 1)),
     nextDelta: Math.round(w.damage * 0.2),
@@ -46,8 +48,11 @@ export function showBestiary(rootEl, meta, onBack) {
           </div>` : `
           <div class="card bestiary-card locked"><h4>???</h4><p>尚未遭遇</p></div>`).join('')
         : weaponCards.map(v => `
-          <div class="card bestiary-card">
-            <div class="bestiary-swatch" style="background:${v.color}"></div>
+          <div class="card bestiary-card"
+               data-visual-id="${v.icon}"
+               data-tooltip-name="${v.name}"
+               data-tooltip-description="${v.desc}"
+               data-tooltip-value="伤害 ${v.damage} · 射程 ${v.stats.range}">
             <h4>${v.name}</h4><p>${v.desc}</p>
             <p>伤害 ${v.damage} · 射速 ${v.stats.fireRate}/s · 射程 ${v.stats.range}</p>
             <p>局外等级 Lv ${v.level}/10${v.maxed ? '（已满级）' : ` · 下一级伤害 +${v.nextDelta}`}</p>
@@ -56,6 +61,9 @@ export function showBestiary(rootEl, meta, onBack) {
       <p class="bestiary-note">图鉴数值为基础值（关卡 1、局内 0 分钟口径）；局内实际值随关卡与时间增长。</p>
       <button id="bestiary-back" class="btn btn-dim">返回</button>
     `;
+    for (const card of rootEl.querySelectorAll('.bestiary-card[data-visual-id]'))
+      card.prepend(createIconCanvas(card.dataset.visualId, 48));
+    attachTooltips(rootEl);
     rootEl.querySelector('#bestiary-tab-monsters').addEventListener('click', () => render('monsters'));
     rootEl.querySelector('#bestiary-tab-weapons').addEventListener('click', () => render('weapons'));
     rootEl.querySelector('#bestiary-back').addEventListener('click', () => {

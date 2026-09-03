@@ -7,6 +7,7 @@ import { AUX_CONFIG } from '../entities/companions.js';
 import { AUX_MAX } from '../config/economy.js';
 import { catalogFor } from '../systems/shop.js';
 import { createIconCanvas } from './icon.js';
+import { attachTooltips } from './tooltip.js';
 
 // 条目 → {title, desc, price, icon, value}（earlyTier 无 price）
 export function entryView(entry, game) {
@@ -72,7 +73,7 @@ function buildEntryEl(entry, game, handlers) {
   el.className = 'card shop-item' + (disabled ? ' disabled' : '');
   el.dataset.visualId = v.icon;
   el.dataset.tooltipName = v.title;
-  el.dataset.tooltipDescription = v.desc;
+  el.dataset.tooltipDescription = entry.kind === 'item' ? ITEMS[entry.item].desc : v.desc;
   el.dataset.tooltipValue = v.value;
   el.innerHTML = `<h4>${v.title}</h4><p>${v.desc}</p>` +
     (v.price !== null ? `<p class="shop-price">${v.price} 银币</p>` : '');
@@ -153,4 +154,5 @@ export function showShop(rootEl, game, handlers, opts = {}) {
 
   rootEl.replaceChildren(head, build, wrap, btn);
   rootEl.classList.remove('hidden');
+  attachTooltips(rootEl);
 }

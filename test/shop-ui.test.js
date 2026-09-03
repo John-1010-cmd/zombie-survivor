@@ -111,6 +111,11 @@ test('showShop：图标进入卡片，货币图标存在，未拥有辅助强化
   assert.ok(nodes.some(n => n.dataset.visualId === 'icon.currency.silver'));
   assert.ok(nodes.some(n => n.className === 'shop-row aux-unowned'));
   assert.ok(nodes.filter(n => n.className === 'shop-row aux-unowned').length >= 3);
+  const medkit = nodes.find(n => n.dataset.visualId === 'icon.item.medkit');
+  assert.ok(medkit);
+  assert.equal(medkit.dataset.tooltipName, '医疗包');
+  assert.equal(medkit.dataset.tooltipDescription, '立即回复 50% HP');
+  assert.equal(medkit.dataset.tooltipValue, '30 银币');
 });
 
 test('upgradeView：保留局外等级计算并提供武器图标', async () => {

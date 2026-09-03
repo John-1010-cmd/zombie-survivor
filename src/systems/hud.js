@@ -4,12 +4,17 @@ import { ITEMS, ITEM_IDS } from '../config/items.js';
 import { AUX_CONFIG } from '../entities/companions.js';
 import { ADVENTURE_TIER_DURATION, ADVENTURE_LEVELS } from '../config/adventure.js';
 import { PALETTE } from '../config/palette.js';
+import { getVisualCanvas } from '../core/visuals.js';
+import { attachTooltips } from '../ui/tooltip.js';
 
 const HUD_MARGIN = 16;
 const HP_BAR_WIDTH = 220;
 const HP_BAR_HEIGHT = 16;
-const SLOT_GAP = 6;
-const SLOT_HEIGHT = 22;
+const ITEM_SLOT_WIDTH = 72;
+const ITEM_SLOT_HEIGHT = 48;
+const ITEM_GAP = 8;
+const ITEM_BOTTOM = 32;
+const ITEM_ICON_SIZE = 32;
 
 export function formatTime(sec) {
   const m = Math.floor(sec / 60);
@@ -24,6 +29,81 @@ export function adventureTierProgress(timeSec) {
   return { tier, progress };
 }
 
+export function hudLayout(viewport = {}) {
+  const width = Math.max(1, Number(viewport.width) || 1);
+  const height = Math.max(1, Number(viewport.height) || 1);
+  const itemSlots = ITEM_IDS.map((id, index) => {
+    const x = HUD_MARGIN + index * (ITEM_SLOT_WIDTH + ITEM_GAP);
+    const y = height - ITEM_BOTTOM - ITEM_SLOT_HEIGHT;
+    return {
+      id, x, y, width: ITEM_SLOT_WIDTH, height: ITEM_SLOT_HEIGHT,
+      iconX: x + 8, iconY: y + 8,
+    };
+  });
+  return {
+    width, height, leftX: HUD_MARGIN, rightX: width - HUD_MARGIN,
+    itemSlots, weaponY: height - 8,
+  };
+}
+
+export function itemSlotView(id, inventory = {}) {
+  const item = ITEMS[id];
+  const count = inventory[id] || 0;
+  return {
+    id, key: item.key, name: item.name, desc: item.desc,
+    icon: item.visual.icon, count, empty: count === 0,
+  };
+}
+
+export function hudTooltipView(slot) {
+  return {
+    name: slot.name,
+    description: slot.desc,
+    value: `数量 ${slot.count} · 数字键 ${slot.key}`,
+  };
+}
+
+function syncHudTooltips(game, layout, slots) {
+  if (typeof document === 'undefined') return;
+  const overlay = document.getElementById('ui-overlay');
+  if (!overlay) return;
+  let root = overlay.querySelector('#hud-tooltip-targets');
+  if (!root) {
+    root = document.createElement('div');
+    root.id = 'hud-tooltip-targets';
+    root.className = 'hud-tooltip-targets';
+    overlay.appendChild(root);
+  }
+  const itemSlots = slots || ITEM_IDS.map(id => itemSlotView(id, game.inventory));
+  let signature = `${layout.width}x${layout.height}`;
+  for (let i = 0; i < itemSlots.length; i++) {
+    signature += `|${itemSlots[i].id}:${itemSlots[i].count}`;
+  }
+  if (root.dataset.tooltipSignature === signature) return;
+  root.dataset.tooltipSignature = signature;
+
+  for (let i = 0; i < itemSlots.length; i++) {
+    const target = root.children[i] || document.createElement('button');
+    if (!target.parentNode) root.appendChild(target);
+    const slot = layout.itemSlots[i];
+    const view = itemSlots[i];
+    target.type = 'button';
+    target.className = 'hud-tooltip-anchor';
+    target.tabIndex = 0;
+    target.setAttribute('aria-label', view.name);
+    target.dataset.tooltipName = view.name;
+    target.dataset.tooltipDescription = view.desc;
+    target.dataset.tooltipValue = hudTooltipView(view).value;
+    target.style.left = `${slot.x}px`;
+    target.style.top = `${slot.y}px`;
+    target.style.width = `${slot.width}px`;
+    target.style.height = `${slot.height}px`;
+    target.hidden = false;
+  }
+  for (let i = itemSlots.length; i < root.children.length; i++) root.children[i].hidden = true;
+  attachTooltips(root);
+}
+
 function fillRectWithAlpha(ctx, color, alpha, x, y, width, height) {
   const previousAlpha = ctx.globalAlpha;
   ctx.globalAlpha = alpha;
@@ -33,8 +113,9 @@ function fillRectWithAlpha(ctx, color, alpha, x, y, width, height) {
 }
 
 export function renderHud(ctx, game, viewport) {
-  const W = viewport.width;
-  const H = viewport.height;
+  const layout = hudLayout(viewport);
+  const W = layout.width;
+  const H = layout.height;
   const barW = Math.min(HP_BAR_WIDTH, Math.max(80, W - HUD_MARGIN * 2));
   const barH = HP_BAR_HEIGHT;
   const topX = HUD_MARGIN;
@@ -65,9 +146,9 @@ export function renderHud(ctx, game, viewport) {
     if (remain <= 60) timeColor = PALETTE.gold;
   }
   ctx.fillStyle = timeColor;
-  ctx.fillText(timeText, W - HUD_MARGIN, topY + 8);
+  ctx.fillText(timeText, layout.rightX, topY + 8);
   ctx.fillStyle = PALETTE.text;
-  ctx.fillText('击杀 ' + game.kills, W - HUD_MARGIN, topY + 28);
+  ctx.fillText('击杀 ' + game.kills, layout.rightX, topY + 28);
 
   if (game.mode === 'adventure') {
     const progressState = adventureTierProgress(game.time);
@@ -92,22 +173,34 @@ export function renderHud(ctx, game, viewport) {
     }
   }
 
+  // 左下：5 个道具槽；非空槽从 id+size 离屏缓存贴图，空槽只画低对比锁定框。
   ctx.textAlign = 'left';
-  const slotWidth = Math.min(96, Math.max(32, (W - HUD_MARGIN * 2 - SLOT_GAP * 4) / ITEM_IDS.length));
-  const infoY = H - HUD_MARGIN;
-  const slotY = infoY - 30;
-  let slotX = HUD_MARGIN;
-  for (const id of ITEM_IDS) {
-    const item = ITEMS[id];
+  const slots = ITEM_IDS.map(id => itemSlotView(id, game.inventory));
+  for (let i = 0; i < slots.length; i++) {
+    const view = slots[i];
+    const slot = layout.itemSlots[i];
     ctx.fillStyle = PALETTE.hudPanel;
-    ctx.fillRect(slotX, slotY, slotWidth, SLOT_HEIGHT);
+    ctx.fillRect(slot.x, slot.y, slot.width, slot.height);
     ctx.strokeStyle = PALETTE.neonDim;
-    ctx.strokeRect(slotX, slotY, slotWidth, SLOT_HEIGHT);
+    ctx.strokeRect(slot.x + 0.5, slot.y + 0.5, slot.width - 1, slot.height - 1);
     ctx.fillStyle = PALETTE.gold;
-    ctx.fillText(item.key + ' ' + item.name + '×' + (game.inventory[id] || 0), slotX + 6, slotY + 15);
-    slotX += slotWidth + SLOT_GAP;
+    ctx.fillText(String(view.key), slot.x + 6, slot.y + 14);
+    if (view.empty) {
+      ctx.beginPath();
+      ctx.arc(slot.x + slot.width / 2, slot.y + 19, 7, Math.PI, 0);
+      ctx.strokeStyle = PALETTE.neonDim;
+      ctx.stroke();
+      ctx.strokeRect(slot.x + slot.width / 2 - 9, slot.y + 19, 18, 14);
+    } else {
+      ctx.drawImage(getVisualCanvas(view.icon, ITEM_ICON_SIZE), slot.iconX, slot.iconY, ITEM_ICON_SIZE, ITEM_ICON_SIZE);
+      ctx.fillStyle = PALETTE.neonDim;
+      ctx.fillRect(slot.x + slot.width - 24, slot.y + slot.height - 20, 18, 16);
+      ctx.fillStyle = PALETTE.text;
+      ctx.fillText(String(view.count), slot.x + slot.width - 14, slot.y + slot.height - 8);
+    }
   }
 
+  // 底部当前武器信息仍使用逻辑 CSS viewport，不使用物理 canvas 尺寸。
   ctx.fillStyle = PALETTE.text;
   const dims = ENHANCE_STATS.map(s => `${STAT_LABEL[s].split(' ')[0]}${game.weapon.enhance[s]}`).join(' ');
   let info = WEAPONS[game.weapon.id].name + ' · ' + dims;
@@ -116,12 +209,13 @@ export function renderHud(ctx, game, viewport) {
     info += ' · 辅助 ' + Object.entries(aux.counts).filter(([, n]) => n > 0)
       .map(([k, n]) => `${AUX_CONFIG[k].name}×${n}`).join(' ');
   }
-  ctx.fillText(info, HUD_MARGIN, infoY);
+  ctx.fillText(info, layout.leftX, layout.weaponY);
+  syncHudTooltips(game, layout, slots);
 
   if (game.interactionPrompt) {
     ctx.textAlign = 'right';
     ctx.fillStyle = PALETTE.textDim;
-    ctx.fillText(game.interactionPrompt, W - HUD_MARGIN, H - HUD_MARGIN);
+    ctx.fillText(game.interactionPrompt, layout.rightX, layout.weaponY);
   }
   ctx.textAlign = 'left';
 }

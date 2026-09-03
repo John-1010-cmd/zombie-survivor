@@ -4,6 +4,7 @@ import { WEAPONS } from '../config/bestiary/weapons.js';
 import { weaponUpgradePrice } from '../config/economy.js';
 import { weaponLevel, spendGold } from '../core/meta.js';
 import { createIconCanvas } from './icon.js';
+import { attachTooltips } from './tooltip.js';
 
 export function upgradeView(w, meta) {
   const level = weaponLevel(meta, w.id);
@@ -64,6 +65,7 @@ export function showUpgrades(rootEl, meta, onBack, onSave) {
       rootEl.classList.add('hidden');
       onBack();
     });
+    attachTooltips(rootEl);
   };
   rootEl.classList.remove('hidden');
   render();
