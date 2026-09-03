@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { WEAPON_MAX_LEVEL, ENHANCE_STATS, STAT_LABEL } from '../src/config/bestiary/weapons.js';
+import { ASSETS, ASSET_BY_ID } from '../src/config/assets.js';
 import {
   DIFFICULTY_TIERS, getTier, getTierConfig, TIER_DURATION, STAT_CAP_TIER,
   GRACE_PERIOD, MAX_ZOMBIES, SURGE_CAP, tierStartTime,
@@ -96,4 +97,43 @@ test('MODES 字段：endless 无尽表、holdout10 压缩段表、holdout20 无�
   assert.equal(MODES.holdout20.getCfg, getTierConfig);
   assert.equal(MODES.holdout20.surgeFrom, 1140);
   assert.equal(MODES.holdout20.bossAt, 1140);
+});
+
+test('图标 manifest：21 个稳定 ID、路径、128 尺寸与 prompt 版本完整', () => {
+  const expected = [
+    ['icon.weapon.pistol', 'assets/img/icons/weapons/pistol.png'],
+    ['icon.weapon.rifle', 'assets/img/icons/weapons/rifle.png'],
+    ['icon.weapon.mg', 'assets/img/icons/weapons/mg.png'],
+    ['icon.weapon.rocket', 'assets/img/icons/weapons/rocket.png'],
+    ['icon.weapon.grenade', 'assets/img/icons/weapons/grenade.png'],
+    ['icon.weapon.tesla', 'assets/img/icons/weapons/tesla.png'],
+    ['icon.weapon.sniperRifle', 'assets/img/icons/weapons/sniper-rifle.png'],
+    ['icon.item.medkit', 'assets/img/icons/items/medkit.png'],
+    ['icon.item.magnet', 'assets/img/icons/items/magnet.png'],
+    ['icon.item.bomb', 'assets/img/icons/items/bomb.png'],
+    ['icon.item.turret', 'assets/img/icons/items/turret.png'],
+    ['icon.item.wall', 'assets/img/icons/items/wall.png'],
+    ['icon.aux.drone', 'assets/img/icons/aux/drone.png'],
+    ['icon.aux.gunner', 'assets/img/icons/aux/gunner.png'],
+    ['icon.aux.sniper', 'assets/img/icons/aux/sniper.png'],
+    ['icon.enhance.damage', 'assets/img/icons/enhance/damage.png'],
+    ['icon.enhance.fireRate', 'assets/img/icons/enhance/fire-rate.png'],
+    ['icon.enhance.projectiles', 'assets/img/icons/enhance/projectiles.png'],
+    ['icon.enhance.range', 'assets/img/icons/enhance/range.png'],
+    ['icon.currency.silver', 'assets/img/icons/currency/silver.png'],
+    ['icon.currency.gold', 'assets/img/icons/currency/gold.png'],
+  ];
+
+  const icons = ASSETS.filter(asset => asset.id.startsWith('icon.'));
+  assert.equal(icons.length, 21);
+  assert.deepEqual(icons.map(a => [a.id, a.path]), expected);
+  assert.equal(new Set(icons.map(a => a.id)).size, 21);
+  for (const [id, path] of expected) {
+    const asset = ASSET_BY_ID[id];
+    assert.equal(asset.id, id);
+    assert.equal(asset.path, path);
+    assert.equal(asset.size, 128);
+    assert.ok(['neon-cel-v1', 'placeholder-v0'].includes(asset.promptVersion));
+    assert.equal(ASSET_BY_ID[id], asset);
+  }
 });

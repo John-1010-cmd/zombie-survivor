@@ -14,6 +14,8 @@ import { showBestiary } from './ui/bestiary.js';
 import { loadMeta, saveMeta, addGold, recordAdventureResult } from './core/meta.js';
 import { ADVENTURE_LEVELS, adventureLevelById, adventureLevelIndex, clearGoldReward, failGoldReward } from './config/adventure.js';
 import { initPalette } from './config/palette.js';
+import { registerImage, preloadVisuals } from './core/visuals.js';
+import { ASSETS } from './config/assets.js';
 
 const canvas = document.getElementById('game');
 const menuEl = document.getElementById('menu');
@@ -30,6 +32,10 @@ const engine = createEngine(canvas);
 const settings = loadSettings();
 const audio = createAudio(settings);
 const meta = loadMeta(); // 局外存档全程内存引用，变更后 saveMeta（Task 10）
+
+for (const asset of ASSETS) registerImage(asset.id, asset.path);
+void preloadVisuals();
+
 let currentScene = null;
 
 const input = createInput({
