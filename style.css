@@ -18,10 +18,16 @@
   --text: #e6f2ea;
   --text-dim: #9fb5a8;
   --radius: 8px;
+  --canvas-ground: #1a2418;
+  --canvas-obstacle: #4a4a52;
+  --canvas-hud-panel: #122019;
+  --canvas-boundary: var(--neon-dim);
 }
 
-html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
-#game { display: block; margin: 0 auto; background: var(--bg); }
+html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); overflow: hidden; }
+#game { display: block; width: 100%; height: 100%; margin: 0; background: var(--bg); }
+#ui-overlay { position: absolute; inset: 0; pointer-events: none; }
+#ui-overlay .interactive { pointer-events: auto; }
 
 /* —— 覆盖层面板基底：深色半透明底 + 霓虹几何描边 + 统一内边距 —— */
 .overlay { position: absolute; inset: 0; display: flex; flex-direction: column;

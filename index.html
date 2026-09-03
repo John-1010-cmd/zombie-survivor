@@ -7,15 +7,17 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <canvas id="game" width="1280" height="720"></canvas>
-  <div id="menu" class="overlay"></div>
-  <div id="pause" class="overlay hidden"></div>
-  <div id="shop" class="overlay hidden"></div>
-  <div id="gameover" class="overlay hidden"></div>
-  <div id="dev" class="overlay hidden"></div>
-  <div id="levels" class="overlay hidden"></div>
-  <div id="bestiary" class="overlay hidden"></div>
-  <div id="upgrades" class="overlay hidden"></div>
+  <canvas id="game"></canvas>
+  <div id="ui-overlay">
+    <div id="menu" class="overlay interactive"></div>
+    <div id="pause" class="overlay interactive hidden"></div>
+    <div id="shop" class="overlay interactive hidden"></div>
+    <div id="gameover" class="overlay interactive hidden"></div>
+    <div id="dev" class="overlay interactive hidden"></div>
+    <div id="levels" class="overlay interactive hidden"></div>
+    <div id="bestiary" class="overlay interactive hidden"></div>
+    <div id="upgrades" class="overlay interactive hidden"></div>
+  </div>
   <script type="module" src="src/main.js"></script>
 </body>
 </html>
