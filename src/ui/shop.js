@@ -6,40 +6,59 @@ import { ITEMS } from '../config/items.js';
 import { AUX_CONFIG } from '../entities/companions.js';
 import { AUX_MAX } from '../config/economy.js';
 import { catalogFor } from '../systems/shop.js';
+import { createIconCanvas } from './icon.js';
 
-// 条目 → {title, desc, price}（earlyTier 无 price）
-function entryView(entry, game) {
+// 条目 → {title, desc, price, icon, value}（earlyTier 无 price）
+export function entryView(entry, game) {
   const max = STAT_MAX;
   if (entry.kind === 'enhance') {
-    return { title: STAT_LABEL[entry.stat], desc: `当前 ${entry.owned}/${max} 级`, price: entry.price };
+    return {
+      title: STAT_LABEL[entry.stat], desc: `当前 ${entry.owned}/${max} 级`, price: entry.price,
+      icon: `icon.enhance.${entry.stat}`, value: `等级 ${entry.owned}/${max}`,
+    };
   }
   if (entry.kind === 'weapon') {
     const refundNote = (entry.refund ?? 0) > 0 ? `（返还强化 ${entry.refund} 银币）` : '';
-    return { title: WEAPONS[entry.weapon].name, desc: `更换主武器（增强清零）${refundNote}`, price: entry.price };
+    return {
+      title: WEAPONS[entry.weapon].name, desc: `更换主武器（增强清零）${refundNote}`, price: entry.price,
+      icon: WEAPONS[entry.weapon].icon, value: `${entry.price} 银币`,
+    };
   }
   if (entry.kind === 'aux') {
     const c = AUX_CONFIG[entry.aux];
     return {
       title: c.name,
       desc: `数量 ${game.aux.counts[entry.aux]}/${AUX_MAX[entry.aux]}（再买 +1）· 伤害${c.damage} 射速${c.fireRate} 射程${c.range}`,
-      price: entry.price,
+      price: entry.price, icon: c.icon,
+      value: `${entry.price} 银币`,
     };
   }
   if (entry.kind === 'auxEnhance') {
-    return { title: `${AUX_CONFIG[entry.aux].name} · ${STAT_LABEL[entry.stat]}`, desc: `当前 ${entry.owned}/${max} 级`, price: entry.price };
+    return {
+      title: `${AUX_CONFIG[entry.aux].name} · ${STAT_LABEL[entry.stat]}`,
+      desc: `当前 ${entry.owned}/${max} 级`, price: entry.price,
+      icon: `icon.enhance.${entry.stat}`, value: `等级 ${entry.owned}/${max}`,
+    };
   }
   if (entry.kind === 'deployEnhance') {
     const label = entry.target === 'turret' ? `固定火炮 · ${STAT_LABEL[entry.stat]}` : '围墙 · 每段耐久 +50%';
-    return { title: label, desc: `当前 ${entry.owned}/${max} 级`, price: entry.price };
+    const icon = entry.target === 'turret' ? ITEMS.turret.visual.icon : ITEMS.wall.visual.icon;
+    return {
+      title: label, desc: `当前 ${entry.owned}/${max} 级`, price: entry.price,
+      icon, value: `等级 ${entry.owned}/${max}`,
+    };
   }
   if (entry.kind === 'item') {
     const it = ITEMS[entry.item];
-    return { title: it.name, desc: `${it.desc}（持有 ${game.inventory[entry.item] || 0}）`, price: entry.price };
+    return {
+      title: it.name, desc: `${it.desc}（持有 ${game.inventory[entry.item] || 0}）`, price: entry.price,
+      icon: it.visual.icon, value: `${entry.price} 银币`,
+    };
   }
   return {
     title: '提前进入下一档',
     desc: entry.bonus > 0 ? `下一档立即到来，奖励 ${entry.bonus} 银币` : '下一档立即到来（无奖励）',
-    price: null,
+    price: null, icon: 'icon.currency.silver', value: `${entry.bonus} 银币`,
   };
 }
 
@@ -51,8 +70,18 @@ function buildEntryEl(entry, game, handlers) {
   const affordable = v.price === null || game.coins >= v.price;
   const disabled = !affordable || entry.owned0 === true;
   el.className = 'card shop-item' + (disabled ? ' disabled' : '');
+  el.dataset.visualId = v.icon;
+  el.dataset.tooltipName = v.title;
+  el.dataset.tooltipDescription = v.desc;
+  el.dataset.tooltipValue = v.value;
   el.innerHTML = `<h4>${v.title}</h4><p>${v.desc}</p>` +
     (v.price !== null ? `<p class="shop-price">${v.price} 银币</p>` : '');
+  el.prepend(createIconCanvas(v.icon, 48));
+  if (v.price !== null) {
+    const currency = createIconCanvas('icon.currency.silver', 24);
+    currency.className = 'currency-icon';
+    el.appendChild(currency);
+  }
   el.addEventListener('click', () => {
     if (entry.kind === 'earlyTier') onEarlyTier(entry.bonus);
     else if (!disabled) onBuy(entry);
@@ -67,11 +96,13 @@ export function showShop(rootEl, game, handlers, opts = {}) {
   const head = document.createElement('div');
   head.className = 'shop-head';
   head.innerHTML = `<h2>商店</h2><p class="shop-coins">银币：${game.coins}</p>`;
+  head.prepend(createIconCanvas('icon.currency.silver', 24));
 
   const build = document.createElement('div');
   build.className = 'build';
   const dims = ENHANCE_STATS.map(s => `${STAT_LABEL[s].split(' ')[0]} ${game.weapon.enhance[s]}/${STAT_MAX}`).join('　');
   build.innerHTML = `<div class="build-head">${WEAPONS[game.weapon.id].name}</div><div class="build-stat">${dims}</div>`;
+  build.prepend(createIconCanvas(WEAPONS[game.weapon.id].icon, 48));
 
   const wrap = document.createElement('div');
   wrap.className = 'shop-groups';
@@ -94,7 +125,7 @@ export function showShop(rootEl, game, handlers, opts = {}) {
       }
       for (const t of types) {
         const sub = document.createElement('div');
-        sub.className = 'shop-row';
+        sub.className = 'shop-row' + ((game.aux.counts[t.aux] ?? 0) === 0 ? ' aux-unowned' : '');
         const subLabel = document.createElement('h3');
         subLabel.className = 'shop-row-title';
         subLabel.textContent = AUX_CONFIG[t.aux].name;

@@ -3,6 +3,20 @@
 import { WEAPONS } from '../config/bestiary/weapons.js';
 import { weaponUpgradePrice } from '../config/economy.js';
 import { weaponLevel, spendGold } from '../core/meta.js';
+import { createIconCanvas } from './icon.js';
+
+export function upgradeView(w, meta) {
+  const level = weaponLevel(meta, w.id);
+  const maxed = level >= 10;
+  const price = maxed ? null : weaponUpgradePrice(level);
+  const currentDamage = Math.round(w.damage * (1 + 0.2 * level) * 100) / 100;
+  const nextDamage = maxed ? null : Math.round(w.damage * (1 + 0.2 * (level + 1)) * 100) / 100;
+  return {
+    id: w.id, icon: w.icon, level, maxed, price,
+    currentDamage, nextDamage,
+    disabled: maxed || meta.gold < price,
+  };
+}
 
 export function showUpgrades(rootEl, meta, onBack, onSave) {
   const render = () => {
@@ -11,24 +25,30 @@ export function showUpgrades(rootEl, meta, onBack, onSave) {
       <p>金币余额：${meta.gold}</p>
       <div class="upgrade-list">
         ${Object.values(WEAPONS).map(w => {
-          const lv = weaponLevel(meta, w.id);
-          const maxed = lv >= 10;
-          const price = maxed ? null : weaponUpgradePrice(lv);
-          const curDmg = w.damage * (1 + 0.2 * lv);
-          const nextDmg = w.damage * (1 + 0.2 * (lv + 1));
-          const disabled = maxed || meta.gold < price;
+          const v = upgradeView(w, meta);
           return `
-            <div class="card upgrade-row">
-              <h4>${w.name} <span>Lv ${lv}/10</span></h4>
-              <p>伤害 ${Math.round(curDmg)}${maxed ? '（已满级）' : ` → ${Math.round(nextDmg)}`}</p>
-              <button class="btn upgrade-buy" data-id="${w.id}" ${disabled ? 'disabled' : ''}>
-                ${maxed ? '满级' : `升级（${price} 金币）`}
+            <div class="card upgrade-row"
+                 data-visual-id="${v.icon}"
+                 data-tooltip-name="${w.name}"
+                 data-tooltip-description="${w.desc}"
+                 data-tooltip-value="伤害 ${Math.round(v.currentDamage)}${v.maxed ? '' : ` → ${Math.round(v.nextDamage)}`}">
+              <h4>${w.name} <span>Lv ${v.level}/10</span></h4>
+              <p>伤害 ${Math.round(v.currentDamage)}${v.maxed ? '（已满级）' : ` → ${Math.round(v.nextDamage)}`}</p>
+              <button class="btn upgrade-buy" data-id="${w.id}"${v.disabled ? ' disabled' : ''}${v.maxed ? '' : ' data-currency-icon="icon.currency.gold"'}>
+                ${v.maxed ? '满级' : `升级（${v.price} 金币）`}
               </button>
             </div>`;
         }).join('')}
       </div>
       <button id="upgrades-back" class="btn btn-dim">返回</button>
     `;
+    for (const row of rootEl.querySelectorAll('.upgrade-row[data-visual-id]'))
+      row.prepend(createIconCanvas(row.dataset.visualId, 48));
+    for (const button of rootEl.querySelectorAll('.upgrade-buy[data-currency-icon]')) {
+      const currency = createIconCanvas(button.dataset.currencyIcon, 24);
+      currency.className = 'currency-icon';
+      button.prepend(currency);
+    }
     for (const btn of rootEl.querySelectorAll('.upgrade-buy')) {
       btn.addEventListener('click', () => {
         const id = btn.dataset.id;

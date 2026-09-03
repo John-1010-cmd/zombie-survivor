@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { catalogFor, buy } from '../src/systems/shop.js';
+import { entryView } from '../src/ui/shop.js';
 import { createWeapon } from '../src/entities/weapon.js';
 import { createInventory, itemCount } from '../src/systems/inventory.js';
 import {
@@ -366,4 +367,15 @@ test('weapon 条目带 refund（= 当前武器 spent）', () => {
   // 换枪后目录 refund 归零（新武器 spent=0）
   assert.equal(buy(g, { kind: 'weapon', weapon: 'rifle', price: 80 }), true);
   assert.ok(weapons().every(e => e.refund === 0));
+});
+
+test('商店展示模型为各类条目提供 manifest 图标', () => {
+  const game = makeGame();
+  assert.equal(entryView({ kind: 'item', item: 'medkit', price: 30 }, game).icon, 'icon.item.medkit');
+  assert.equal(entryView({ kind: 'weapon', weapon: 'rifle', price: 80, refund: 0 }, game).icon, 'icon.weapon.rifle');
+  assert.equal(entryView({ kind: 'aux', aux: 'drone', price: 60 }, game).icon, 'icon.aux.drone');
+  assert.equal(entryView({ kind: 'enhance', stat: 'damage', price: 40, owned: 0 }, game).icon, 'icon.enhance.damage');
+  assert.equal(entryView({ kind: 'auxEnhance', aux: 'sniper', stat: 'range', price: 40, owned: 0 }, game).icon, 'icon.enhance.range');
+  assert.equal(entryView({ kind: 'deployEnhance', target: 'wall', stat: 'hp', price: 40, owned: 0 }, game).icon, 'icon.item.wall');
+  assert.equal(entryView({ kind: 'earlyTier', bonus: 25 }, game).icon, 'icon.currency.silver');
 });
