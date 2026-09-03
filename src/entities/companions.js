@@ -3,9 +3,9 @@
 // （damage ×1.25^ / fireRate ×1.2^ / projectiles + / range ×1.2^）。
 // 迭代 05：三种全部环绕玩家，orbit 差异化（drone 90 / gunner 60 / sniper 100）。
 export const AUX_CONFIG = {
-  drone: { name: '随行无人机', orbit: 90, damage: 6, fireRate: 2, projectileSpeed: 500, range: 250, aoe: 0 },
-  gunner: { name: '随行移动火炮', orbit: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 320, aoe: 60 },
-  sniper: { name: '随行远程火炮', orbit: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 500, aoe: 0 },
+  drone: { name: '随行无人机', icon: 'icon.aux.drone', orbit: 90, damage: 6, fireRate: 2, projectileSpeed: 500, range: 250, aoe: 0 },
+  gunner: { name: '随行移动火炮', icon: 'icon.aux.gunner', orbit: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 320, aoe: 60 },
+  sniper: { name: '随行远程火炮', icon: 'icon.aux.sniper', orbit: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 500, aoe: 0 },
 };
 
 // 环绕角速（rad/s）：drone 2.2 / gunner 1.4 / sniper 1.0

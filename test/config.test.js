@@ -1,7 +1,9 @@
 // test/config.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { WEAPON_MAX_LEVEL, ENHANCE_STATS, STAT_LABEL } from '../src/config/bestiary/weapons.js';
+import { WEAPON_MAX_LEVEL, ENHANCE_STATS, STAT_LABEL, WEAPONS } from '../src/config/bestiary/weapons.js';
+import { ITEMS, ITEM_IDS } from '../src/config/items.js';
+import { AUX_CONFIG } from '../src/entities/companions.js';
 import { ASSETS, ASSET_BY_ID } from '../src/config/assets.js';
 import {
   DIFFICULTY_TIERS, getTier, getTierConfig, TIER_DURATION, STAT_CAP_TIER,
@@ -135,5 +137,23 @@ test('图标 manifest：21 个稳定 ID、路径、128 尺寸与 prompt 版本�
     assert.equal(asset.size, 128);
     assert.ok(['neon-cel-v1', 'placeholder-v0'].includes(asset.promptVersion));
     assert.equal(ASSET_BY_ID[id], asset);
+  }
+});
+
+test('道具/武器/辅助配置均引用已登记 manifest 图标', () => {
+  for (const id of ITEM_IDS) {
+    const icon = ITEMS[id].visual.icon;
+    assert.equal(icon, `icon.item.${id}`);
+    assert.equal(ASSET_BY_ID[icon].id, icon);
+  }
+  for (const id of ['pistol', 'rifle', 'mg', 'rocket', 'grenade', 'tesla', 'sniperRifle']) {
+    const icon = WEAPONS[id].icon;
+    assert.equal(icon, `icon.weapon.${id}`);
+    assert.equal(ASSET_BY_ID[icon].id, icon);
+  }
+  for (const id of ['drone', 'gunner', 'sniper']) {
+    const icon = AUX_CONFIG[id].icon;
+    assert.equal(icon, `icon.aux.${id}`);
+    assert.equal(ASSET_BY_ID[icon].id, icon);
   }
 });

@@ -129,6 +129,9 @@ test('七武器表：schema 齐全且数值与裁定一致（含新字段与射�
     const c = WEAPONS[id];
     assert.ok(c, `缺武器 ${id}`);
     assert.equal(c.id, id);
+    assert.equal(c.icon, `icon.weapon.${id}`, `${id}.icon`);
+    for (const field of ['bulletShape', 'color', 'trail', 'hitParticles', 'muzzleGlow'])
+      assert.ok(field in c.visual, `${id}.visual.${field}`);
     assert.ok(c.name, `${id} 缺名称`);
     assert.equal(c.damage, expect[id].damage, `${id}.damage`);
     assert.equal(c.fireRate, expect[id].fireRate, `${id}.fireRate`);

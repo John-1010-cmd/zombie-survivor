@@ -16,9 +16,18 @@ test('createAux 结构：counts/增强四维/bodies/t', () => {
 });
 
 test('AUX_CONFIG 基值 per 契约：三种均 orbit（无 follow）', () => {
-  assert.deepEqual(AUX_CONFIG.drone, { name: '随行无人机', orbit: 90, damage: 6, fireRate: 2, projectileSpeed: 500, range: 250, aoe: 0 });
-  assert.deepEqual(AUX_CONFIG.gunner, { name: '随行移动火炮', orbit: 60, damage: 15, fireRate: 1, projectileSpeed: 400, range: 320, aoe: 60 });
-  assert.deepEqual(AUX_CONFIG.sniper, { name: '随行远程火炮', orbit: 100, damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 500, aoe: 0 });
+  assert.deepEqual(AUX_CONFIG.drone, {
+    name: '随行无人机', icon: 'icon.aux.drone', orbit: 90,
+    damage: 6, fireRate: 2, projectileSpeed: 500, range: 250, aoe: 0,
+  });
+  assert.deepEqual(AUX_CONFIG.gunner, {
+    name: '随行移动火炮', icon: 'icon.aux.gunner', orbit: 60,
+    damage: 15, fireRate: 1, projectileSpeed: 400, range: 320, aoe: 60,
+  });
+  assert.deepEqual(AUX_CONFIG.sniper, {
+    name: '随行远程火炮', icon: 'icon.aux.sniper', orbit: 100,
+    damage: 30, fireRate: 0.4, projectileSpeed: 700, range: 500, aoe: 0,
+  });
   assert.equal('follow' in AUX_CONFIG.gunner, false);
   assert.equal('follow' in AUX_CONFIG.sniper, false);
 });
