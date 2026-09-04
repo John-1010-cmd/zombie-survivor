@@ -156,6 +156,10 @@ export function preloadVisuals() {
   return Promise.all([...IMAGE_URLS.keys()].map(id => loadImage(id)));
 }
 
+export function getLoadedImage(id) {
+  return IMAGE_CACHE.get(id) ?? null;
+}
+
 export function drawVisual(ctx, id, x, y, size, options = {}) {
   const settings = options ?? {};
   const shape = SHAPES[id];

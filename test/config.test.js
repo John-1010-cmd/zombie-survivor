@@ -157,3 +157,35 @@ test('道具/武器/辅助配置均引用已登记 manifest 图标', () => {
     assert.equal(ASSET_BY_ID[icon].id, icon);
   }
 });
+
+test('场景物件 manifest：12 个 scene.* 条目、路径、尺寸与 prompt 版本完整', () => {
+  const expected = [
+    ['scene.obstacle.rock.0', 'assets/img/scene/obstacles/rock-0.png', 256],
+    ['scene.obstacle.rock.1', 'assets/img/scene/obstacles/rock-1.png', 256],
+    ['scene.obstacle.rock.2', 'assets/img/scene/obstacles/rock-2.png', 256],
+    ['scene.obstacle.vehicle.0', 'assets/img/scene/obstacles/vehicle-0.png', 256],
+    ['scene.obstacle.vehicle.1', 'assets/img/scene/obstacles/vehicle-1.png', 256],
+    ['scene.obstacle.concrete.0', 'assets/img/scene/obstacles/concrete-0.png', 256],
+    ['scene.obstacle.concrete.1', 'assets/img/scene/obstacles/concrete-1.png', 256],
+    ['scene.supplyStation', 'assets/img/scene/supply-station.png', 256],
+    ['scene.terrain.grass', 'assets/img/scene/terrain/grass-tile.png', 256],
+    ['scene.mine', 'assets/img/scene/mine.png', 128],
+    ['scene.teslaBall', 'assets/img/scene/tesla-ball.png', 128],
+    ['scene.helicopter', 'assets/img/scene/helicopter.png', 256],
+  ];
+
+  const sceneAssets = ASSETS.filter(asset => asset.id.startsWith('scene.'));
+  assert.equal(sceneAssets.length, 12);
+  assert.deepEqual(sceneAssets.map(a => [a.id, a.path, a.size]), expected);
+  assert.equal(new Set(sceneAssets.map(a => a.id)).size, 12);
+  for (const [id, path, size] of expected) {
+    const asset = ASSET_BY_ID[id];
+    assert.ok(asset, `缺少 ASSET_BY_ID[${id}]`);
+    assert.equal(asset.id, id);
+    assert.equal(asset.path, path);
+    assert.equal(asset.size, size);
+    assert.equal(asset.promptVersion, 'neon-cel-scene-v1');
+    assert.equal(ASSET_BY_ID[id], asset);
+  }
+  assert.equal(ASSETS.length, 21 + 12);
+});

@@ -5,9 +5,11 @@ import { mulberry32 } from '../src/core/rng.js';
 import { circleHit, circleRectHit } from '../src/core/physics.js';
 import {
   generateMap, MAP_SIZE, hashId, obstacleVariant,
-  ROCK_VARIANT_COUNT, RECT_VARIANT_COUNT, obstacleVisualId,
+  ROCK_VARIANT_COUNT, RECT_VARIANT_COUNT, obstacleVisualId, obstacleSpriteId,
+  renderObstacle, renderShop,
   SHOP_INTERACT_R, shopPulseState, SUPPLY_STATION_VISUAL_ID, SHOP_LABEL,
 } from '../src/systems/map.js';
+import { clearCaches, registerImage, preloadVisuals } from '../src/core/visuals.js';
 
 const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
 const SHOP_R = 46;
@@ -85,11 +87,11 @@ test('40 枚预撒银币（value=1）均不落在障碍内也不在商店内', (
   }
 });
 
-test('障碍物有稳定 id，hash(id) 选择固定变体且圆/矩形数量保持 3/2 变体', () => {
+test('障碍物有稳定 id，hash(id) 选择固定变体且圆/矩形数量扩展为 3/4 变体', () => {
   const a = generateMap(mulberry32(7));
   const b = generateMap(mulberry32(7));
   assert.equal(ROCK_VARIANT_COUNT, 3);
-  assert.equal(RECT_VARIANT_COUNT, 2);
+  assert.equal(RECT_VARIANT_COUNT, 4);
   assert.deepEqual(
     a.obstacles.map(o => o.id),
     Array.from({ length: 60 }, (_, i) => 'obstacle-' + i),
@@ -106,7 +108,7 @@ test('障碍物有稳定 id，hash(id) 选择固定变体且圆/矩形数量保�
   }
 });
 
-test('障碍物新增视觉字段但碰撞字段与视觉 id 映射不变', () => {
+test('障碍物新增视觉字段但碰撞字段与视觉 id 映射不变，四变体新契约正确映射车辆/混凝土与对应精灵 id', () => {
   const m = generateMap(mulberry32(8));
   for (const o of m.obstacles) {
     assert.equal(typeof o.id, 'string');
@@ -117,6 +119,9 @@ test('障碍物新增视觉字段但碰撞字段与视觉 id 映射不变', () =
       assert.equal(typeof o.r, 'number');
       assert.equal('w' in o, false);
       assert.equal(obstacleVisualId(o), 'scene.rock');
+      assert.equal(obstacleSpriteId({ ...o, variant: 0 }), 'scene.obstacle.rock.0');
+      assert.equal(obstacleSpriteId({ ...o, variant: 1 }), 'scene.obstacle.rock.1');
+      assert.equal(obstacleSpriteId({ ...o, variant: 2 }), 'scene.obstacle.rock.2');
     } else {
       assert.equal(typeof o.x, 'number');
       assert.equal(typeof o.y, 'number');
@@ -124,7 +129,13 @@ test('障碍物新增视觉字段但碰撞字段与视觉 id 映射不变', () =
       assert.equal(typeof o.h, 'number');
       assert.equal('r' in o, false);
       assert.equal(obstacleVisualId({ ...o, variant: 0 }), 'scene.vehicle');
-      assert.equal(obstacleVisualId({ ...o, variant: 1 }), 'scene.concrete');
+      assert.equal(obstacleVisualId({ ...o, variant: 1 }), 'scene.vehicle');
+      assert.equal(obstacleVisualId({ ...o, variant: 2 }), 'scene.concrete');
+      assert.equal(obstacleVisualId({ ...o, variant: 3 }), 'scene.concrete');
+      assert.equal(obstacleSpriteId({ ...o, variant: 0 }), 'scene.obstacle.vehicle.0');
+      assert.equal(obstacleSpriteId({ ...o, variant: 1 }), 'scene.obstacle.vehicle.1');
+      assert.equal(obstacleSpriteId({ ...o, variant: 2 }), 'scene.obstacle.concrete.0');
+      assert.equal(obstacleSpriteId({ ...o, variant: 3 }), 'scene.obstacle.concrete.1');
     }
   }
 });
@@ -149,4 +160,153 @@ test('补给站交互光环只改变 alpha/scale，90px 边界仍为严格小于
   assert.ok(Math.abs(peak.alpha - 0.34) < 1e-12);
   assert.ok(Math.abs(peak.scale - 1.05) < 1e-12);
   assert.notEqual(active.scale, peak.scale);
+});
+
+function makeMockContext() {
+  const calls = [];
+  return {
+    calls,
+    beginPath() { calls.push(['beginPath']); },
+    arc(...args) { calls.push(['arc', ...args]); },
+    moveTo(...args) { calls.push(['moveTo', ...args]); },
+    lineTo(...args) { calls.push(['lineTo', ...args]); },
+    closePath() { calls.push(['closePath']); },
+    fill() { calls.push(['fill']); },
+    stroke() { calls.push(['stroke']); },
+    fillRect(...args) { calls.push(['fillRect', ...args]); },
+    strokeRect(...args) { calls.push(['strokeRect', ...args]); },
+    save() { calls.push(['save']); },
+    restore() { calls.push(['restore']); },
+    translate(...args) { calls.push(['translate', ...args]); },
+    drawImage(...args) { calls.push(['drawImage', ...args]); },
+    fillText(...args) { calls.push(['fillText', ...args]); },
+  };
+}
+
+class FakeImage {
+  static instances = [];
+  constructor() {
+    FakeImage.instances.push(this);
+  }
+  set src(url) {
+    this.url = url;
+    queueMicrotask(() => this.onload?.());
+  }
+  decode() {
+    return Promise.resolve();
+  }
+}
+
+test('未就绪/未注册时障碍物与补给站走程序化 fallback 路径，不调用 drawImage', () => {
+  clearCaches();
+
+  // 1. 岩石回退
+  const ctxRock = makeMockContext();
+  renderObstacle(ctxRock, { kind: 'circle', x: 100, y: 120, r: 35, variant: 0 });
+  const drawCallsRock = ctxRock.calls.filter(([name]) => name === 'drawImage');
+  const fillCallsRock = ctxRock.calls.filter(([name]) => name === 'fill');
+  assert.equal(drawCallsRock.length, 0, '未就绪不得调用 drawImage');
+  assert.ok(fillCallsRock.length >= 1, '程序化岩石 fill 必须被调用');
+
+  // 2. 车辆回退
+  const ctxVehicle = makeMockContext();
+  renderObstacle(ctxVehicle, { kind: 'rect', x: 200, y: 250, w: 80, h: 50, variant: 0 });
+  const drawCallsVeh = ctxVehicle.calls.filter(([name]) => name === 'drawImage');
+  const fillRectCallsVeh = ctxVehicle.calls.filter(([name]) => name === 'fillRect');
+  assert.equal(drawCallsVeh.length, 0);
+  assert.ok(fillRectCallsVeh.length >= 1, '程序化车辆 fillRect 必须被调用');
+
+  // 3. 混凝土回退
+  const ctxConcrete = makeMockContext();
+  renderObstacle(ctxConcrete, { kind: 'rect', x: 200, y: 250, w: 80, h: 50, variant: 2 });
+  const drawCallsConc = ctxConcrete.calls.filter(([name]) => name === 'drawImage');
+  const strokeCallsConc = ctxConcrete.calls.filter(([name]) => name === 'stroke');
+  assert.equal(drawCallsConc.length, 0);
+  assert.ok(strokeCallsConc.length >= 1, '程序化混凝土裂缝 stroke 必须被调用');
+
+  // 4. 补给站回退
+  const ctxShop = makeMockContext();
+  renderShop(ctxShop, { x: 750, y: 750, r: 46, interactR: 90 }, { x: 700, y: 700 }, 0);
+  const drawCallsShop = ctxShop.calls.filter(([name]) => name === 'drawImage');
+  const arcCallsShop = ctxShop.calls.filter(([name]) => name === 'arc');
+  const fillRectShop = ctxShop.calls.filter(([name]) => name === 'fillRect');
+  const fillTextShop = ctxShop.calls.filter(([name]) => name === 'fillText');
+  assert.equal(drawCallsShop.length, 0);
+  assert.ok(arcCallsShop.length >= 1, '光环 arc 必须绘制');
+  assert.ok(fillRectShop.length >= 1, '程序化棚屋 fillRect 必须绘制');
+  assert.ok(fillTextShop.some(c => c[1] === 'SUPPLY'), 'SUPPLY 标签必须绘制');
+});
+
+test('图像就绪时进入混合渲染贴图路径：精确断言到达 drawImage 的实参（源图、坐标、宽高），程序化填充被跳过', async () => {
+  const originalImage = globalThis.Image;
+  try {
+    globalThis.Image = FakeImage;
+    clearCaches();
+
+    registerImage('scene.obstacle.rock.0', 'assets/img/scene/obstacles/rock-0.png');
+    registerImage('scene.obstacle.vehicle.1', 'assets/img/scene/obstacles/vehicle-1.png');
+    registerImage('scene.obstacle.concrete.1', 'assets/img/scene/obstacles/concrete-1.png');
+    registerImage('scene.supplyStation', 'assets/img/scene/supply-station.png');
+    await preloadVisuals();
+
+    // 1. 岩石贴图
+    const ctxRock = makeMockContext();
+    renderObstacle(ctxRock, { kind: 'circle', x: 150, y: 160, r: 35, variant: 0 });
+    const drawCallsRock = ctxRock.calls.filter(([name]) => name === 'drawImage');
+    const fillCallsRock = ctxRock.calls.filter(([name]) => name === 'fill');
+    assert.equal(drawCallsRock.length, 1, '就绪后必须调用 1 次 drawImage');
+    assert.equal(drawCallsRock[0][1].url, 'assets/img/scene/obstacles/rock-0.png', '源图必须为 rock.0');
+    assert.equal(drawCallsRock[0][2], -35, '居中 x 坐标应为 -r');
+    assert.equal(drawCallsRock[0][3], -35, '居中 y 坐标应为 -r');
+    assert.equal(drawCallsRock[0][4], 70, '宽度应为 2r');
+    assert.equal(drawCallsRock[0][5], 70, '高度应为 2r');
+    assert.equal(fillCallsRock.length, 0, '有图贴图时不得再执行程序化 fill');
+
+    // 2. 车辆贴图（variant 1）
+    const ctxVehicle = makeMockContext();
+    renderObstacle(ctxVehicle, { kind: 'rect', x: 200, y: 220, w: 90, h: 56, variant: 1 });
+    const drawCallsVeh = ctxVehicle.calls.filter(([name]) => name === 'drawImage');
+    const fillRectVeh = ctxVehicle.calls.filter(([name]) => name === 'fillRect');
+    assert.equal(drawCallsVeh.length, 1);
+    assert.equal(drawCallsVeh[0][1].url, 'assets/img/scene/obstacles/vehicle-1.png');
+    assert.equal(drawCallsVeh[0][2], -45, '居中 x 坐标应为 -w*0.5');
+    assert.equal(drawCallsVeh[0][3], -28, '居中 y 坐标应为 -h*0.5');
+    assert.equal(drawCallsVeh[0][4], 90, '宽应为 w');
+    assert.equal(drawCallsVeh[0][5], 56, '高应为 h');
+    assert.equal(fillRectVeh.length, 0, '有图贴图时不得再执行程序化 fillRect');
+
+    // 3. 混凝土贴图（variant 3 -> concrete.1）
+    const ctxConcrete = makeMockContext();
+    renderObstacle(ctxConcrete, { kind: 'rect', x: 300, y: 320, w: 84, h: 52, variant: 3 });
+    const drawCallsConc = ctxConcrete.calls.filter(([name]) => name === 'drawImage');
+    const fillRectConc = ctxConcrete.calls.filter(([name]) => name === 'fillRect');
+    assert.equal(drawCallsConc.length, 1);
+    assert.equal(drawCallsConc[0][1].url, 'assets/img/scene/obstacles/concrete-1.png');
+    assert.equal(drawCallsConc[0][2], -42);
+    assert.equal(drawCallsConc[0][3], -26);
+    assert.equal(drawCallsConc[0][4], 84);
+    assert.equal(drawCallsConc[0][5], 52);
+    assert.equal(fillRectConc.length, 0, '有图贴图时不得再执行程序化 fillRect');
+
+    // 4. 补给站贴图（光环与标签保留，主体贴图）
+    const ctxShop = makeMockContext();
+    renderShop(ctxShop, { x: 750, y: 750, r: 46, interactR: 90 }, { x: 700, y: 700 }, 0);
+    const drawCallsShop = ctxShop.calls.filter(([name]) => name === 'drawImage');
+    const arcCallsShop = ctxShop.calls.filter(([name]) => name === 'arc');
+    const fillRectShop = ctxShop.calls.filter(([name]) => name === 'fillRect');
+    const fillTextShop = ctxShop.calls.filter(([name]) => name === 'fillText');
+    assert.equal(drawCallsShop.length, 1);
+    assert.equal(drawCallsShop[0][1].url, 'assets/img/scene/supply-station.png');
+    assert.equal(drawCallsShop[0][2], -46);
+    assert.equal(drawCallsShop[0][3], -46);
+    assert.equal(drawCallsShop[0][4], 92);
+    assert.equal(drawCallsShop[0][5], 92);
+    assert.ok(arcCallsShop.length >= 1, '光环 arc 必须保留');
+    assert.equal(fillRectShop.length, 0, '主体贴图后程序化棚屋 fillRect 必须被跳过');
+    assert.deepEqual(fillTextShop[0], ['fillText', 'SUPPLY', 750, 750 + 46 + 18], 'SUPPLY 标签必须保留');
+  } finally {
+    clearCaches();
+    if (originalImage === undefined) delete globalThis.Image;
+    else globalThis.Image = originalImage;
+  }
 });

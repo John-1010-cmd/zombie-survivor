@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  clearCaches, drawVisual, getVisualCanvas, preloadVisuals,
+  clearCaches, drawVisual, getLoadedImage, getVisualCanvas, preloadVisuals,
   registerImage, registerPart, registerShape, SHAPES, PARTS,
 } from '../src/core/visuals.js';
 import { SHAPES as facadeShapes } from '../src/entities/render.js';
@@ -332,6 +332,47 @@ test('清理并重新登记后忽略过期图片回调', async () => {
     assert.equal(drawCall[1].url, newUrl);
   } finally {
     ControlledImage.deferCounts = new Map();
+    if (originalImage === undefined) delete globalThis.Image;
+    else globalThis.Image = originalImage;
+  }
+});
+
+test('getLoadedImage 只读 IMAGE_CACHE，未注册/未加载/加载失败均返回 null 且不触发加载与告警', async () => {
+  const originalWarn = console.warn;
+  const warnedLogs = [];
+  console.warn = msg => warnedLogs.push(msg);
+
+  const originalImage = globalThis.Image;
+  try {
+    globalThis.Image = FakeImage;
+    clearCaches();
+
+    // 1. 未注册 id 返回 null
+    assert.equal(getLoadedImage('unknown.id.never.registered'), null);
+    assert.equal(warnedLogs.length, 0, 'getLoadedImage 查询未注册 id 不得产生 warning');
+
+    // 2. 注册但未预加载返回 null
+    registerImage('test.image.pending', 'assets/pending.png');
+    assert.equal(getLoadedImage('test.image.pending'), null);
+    assert.equal(warnedLogs.length, 0, 'getLoadedImage 查询未就绪 id 不得产生 warning');
+
+    // 3. 加载失败返回 null
+    registerImage('test.image.fail', 'assets/missing-asset.png');
+    await preloadVisuals();
+    assert.equal(getLoadedImage('test.image.fail'), null);
+
+    // 4. 成功预加载后返回 Image 实例
+    registerImage('test.image.ready', 'assets/ready.png');
+    await preloadVisuals();
+    const loaded = getLoadedImage('test.image.ready');
+    assert.ok(loaded);
+    assert.equal(loaded.url, 'assets/ready.png');
+
+    // 5. clearCaches 后清空缓存返回 null
+    clearCaches();
+    assert.equal(getLoadedImage('test.image.ready'), null);
+  } finally {
+    console.warn = originalWarn;
     if (originalImage === undefined) delete globalThis.Image;
     else globalThis.Image = originalImage;
   }

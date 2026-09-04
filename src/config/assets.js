@@ -22,6 +22,18 @@ export const ASSETS = [
   { id: 'icon.enhance.range', path: 'assets/img/icons/enhance/range.png', size: 128, promptVersion: 'neon-cel-v1' },
   { id: 'icon.currency.silver', path: 'assets/img/icons/currency/silver.png', size: 128, promptVersion: 'neon-cel-v1' },
   { id: 'icon.currency.gold', path: 'assets/img/icons/currency/gold.png', size: 128, promptVersion: 'neon-cel-v1' },
+  { id: 'scene.obstacle.rock.0', path: 'assets/img/scene/obstacles/rock-0.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.obstacle.rock.1', path: 'assets/img/scene/obstacles/rock-1.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.obstacle.rock.2', path: 'assets/img/scene/obstacles/rock-2.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.obstacle.vehicle.0', path: 'assets/img/scene/obstacles/vehicle-0.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.obstacle.vehicle.1', path: 'assets/img/scene/obstacles/vehicle-1.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.obstacle.concrete.0', path: 'assets/img/scene/obstacles/concrete-0.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.obstacle.concrete.1', path: 'assets/img/scene/obstacles/concrete-1.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.supplyStation', path: 'assets/img/scene/supply-station.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.terrain.grass', path: 'assets/img/scene/terrain/grass-tile.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.mine', path: 'assets/img/scene/mine.png', size: 128, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.teslaBall', path: 'assets/img/scene/tesla-ball.png', size: 128, promptVersion: 'neon-cel-scene-v1' },
+  { id: 'scene.helicopter', path: 'assets/img/scene/helicopter.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
 ];
 
 export const ASSET_BY_ID = Object.fromEntries(ASSETS.map(asset => [asset.id, asset]));

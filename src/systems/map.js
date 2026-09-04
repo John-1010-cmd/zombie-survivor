@@ -1,5 +1,5 @@
 import { circleHit, circleRectHit } from '../core/physics.js';
-import { drawVisual, registerPart } from '../core/visuals.js';
+import { drawVisual, registerPart, getLoadedImage } from '../core/visuals.js';
 import { PALETTE } from '../config/palette.js';
 
 export const MAP_SIZE = 3000;
@@ -11,7 +11,7 @@ export const SHOP_R = 46;
 export const SHOP_INTERACT_R = 90;
 export const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
 export const ROCK_VARIANT_COUNT = 3;
-export const RECT_VARIANT_COUNT = 2;
+export const RECT_VARIANT_COUNT = 4;
 export const ROCK_VISUAL_ID = 'scene.rock';
 export const VEHICLE_VISUAL_ID = 'scene.vehicle';
 export const CONCRETE_VISUAL_ID = 'scene.concrete';
@@ -53,7 +53,17 @@ export function obstacleVariant(id, kind) {
 
 export function obstacleVisualId(obstacle) {
   if (obstacle.kind === 'circle') return ROCK_VISUAL_ID;
-  return obstacle.variant % 2 === 0 ? VEHICLE_VISUAL_ID : CONCRETE_VISUAL_ID;
+  const v = (obstacle.variant ?? 0) % RECT_VARIANT_COUNT;
+  return v < 2 ? VEHICLE_VISUAL_ID : CONCRETE_VISUAL_ID;
+}
+
+export function obstacleSpriteId(obstacle) {
+  if (obstacle.kind === 'circle') {
+    const v = (obstacle.variant ?? 0) % ROCK_VARIANT_COUNT;
+    return `scene.obstacle.rock.${v}`;
+  }
+  const v = (obstacle.variant ?? 0) % RECT_VARIANT_COUNT;
+  return v < 2 ? `scene.obstacle.vehicle.${v}` : `scene.obstacle.concrete.${v - 2}`;
 }
 
 const ROCK_POINTS = [
@@ -74,7 +84,13 @@ function traceRock(ctx, points, r, ox = 0, oy = 0, sx = 1, sy = 1) {
 
 registerPart(ROCK_VISUAL_ID, (ctx, size, params = {}) => {
   const r = size * 0.5;
-  const points = ROCK_POINTS[(params.variant ?? 0) % ROCK_VARIANT_COUNT];
+  const variant = (params.variant ?? 0) % ROCK_VARIANT_COUNT;
+  const img = getLoadedImage(`scene.obstacle.rock.${variant}`);
+  if (img) {
+    ctx.drawImage(img, -r, -r, size, size);
+    return;
+  }
+  const points = ROCK_POINTS[variant];
   ctx.save();
   traceRock(ctx, points, r);
   ctx.fillStyle = PALETTE.obstacle;
@@ -99,6 +115,12 @@ registerPart(ROCK_VISUAL_ID, (ctx, size, params = {}) => {
 registerPart(VEHICLE_VISUAL_ID, (ctx, size, params = {}) => {
   const w = params.width ?? size;
   const h = params.height ?? size * 0.62;
+  const variant = (params.variant ?? 0) % 2;
+  const img = getLoadedImage(`scene.obstacle.vehicle.${variant}`);
+  if (img) {
+    ctx.drawImage(img, -w * 0.5, -h * 0.5, w, h);
+    return;
+  }
   ctx.save();
   ctx.fillStyle = PALETTE.obstacle;
   ctx.fillRect(-w * 0.5, -h * 0.5, w, h);
@@ -125,6 +147,12 @@ registerPart(VEHICLE_VISUAL_ID, (ctx, size, params = {}) => {
 registerPart(CONCRETE_VISUAL_ID, (ctx, size, params = {}) => {
   const w = params.width ?? size;
   const h = params.height ?? size * 0.62;
+  const variant = Math.max(0, (params.variant ?? 2) - 2) % 2;
+  const img = getLoadedImage(`scene.obstacle.concrete.${variant}`);
+  if (img) {
+    ctx.drawImage(img, -w * 0.5, -h * 0.5, w, h);
+    return;
+  }
   ctx.save();
   ctx.fillStyle = PALETTE.obstacle;
   ctx.fillRect(-w * 0.5, -h * 0.5, w, h);
@@ -219,6 +247,13 @@ registerPart(SUPPLY_STATION_VISUAL_ID, (ctx, size, params = {}) => {
   ctx.arc(0, 0, interactR * ringScale, 0, Math.PI * 2);
   ctx.stroke();
   ctx.globalAlpha = 1;
+
+  const img = getLoadedImage(SUPPLY_STATION_VISUAL_ID);
+  if (img) {
+    ctx.drawImage(img, -r, -r, size, size);
+    ctx.restore();
+    return;
+  }
 
   ctx.fillStyle = PALETTE.panel;
   ctx.fillRect(-r * 0.62, -r * 0.12, r * 1.24, r * 0.66);
