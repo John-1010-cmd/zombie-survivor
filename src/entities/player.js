@@ -1,4 +1,5 @@
 import { slideCircleObstacles } from '../core/physics.js';
+import { TURN_RATE, turnToward } from '../core/angles.js';
 
 export function createPlayer(x, y) {
   return { x, y, r: 16, hp: 100, maxHp: 100, speed: 180,
@@ -12,7 +13,7 @@ export function updatePlayer(p, input, obstacles, mapSize, dt) {
     const len = Math.hypot(dx, dy);
     p.x += dx / len * p.speed * dt;
     p.y += dy / len * p.speed * dt;
-    p.facing = Math.atan2(dy, dx);
+    p.facing = turnToward(p.facing, Math.atan2(dy, dx), TURN_RATE * Math.max(0, dt));
   }
   p.x = Math.max(p.r, Math.min(mapSize - p.r, p.x));
   p.y = Math.max(p.r, Math.min(mapSize - p.r, p.y));
