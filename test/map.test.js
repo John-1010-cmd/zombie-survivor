@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mulberry32 } from '../src/core/rng.js';
 import { circleHit, circleRectHit } from '../src/core/physics.js';
-import { generateMap, MAP_SIZE } from '../src/systems/map.js';
+import {
+  generateMap, MAP_SIZE, hashId, obstacleVariant,
+  ROCK_VARIANT_COUNT, RECT_VARIANT_COUNT, obstacleVisualId,
+} from '../src/systems/map.js';
 
 const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
 const SHOP_R = 46;
@@ -78,6 +81,50 @@ test('40 枚预撒银币（value=1）均不落在障碍内也不在商店内', (
     }
     for (const s of m.shops) {
       assert.equal(circleHit(c.x, c.y, 8, s.x, s.y, s.r), false);
+    }
+  }
+});
+
+test('障碍物有稳定 id，hash(id) 选择固定变体且圆/矩形数量保持 3/2 变体', () => {
+  const a = generateMap(mulberry32(7));
+  const b = generateMap(mulberry32(7));
+  assert.equal(ROCK_VARIANT_COUNT, 3);
+  assert.equal(RECT_VARIANT_COUNT, 2);
+  assert.deepEqual(
+    a.obstacles.map(o => o.id),
+    Array.from({ length: 60 }, (_, i) => 'obstacle-' + i),
+  );
+  assert.deepEqual(
+    a.obstacles.map(o => ({ id: o.id, kind: o.kind, variant: o.variant })),
+    b.obstacles.map(o => ({ id: o.id, kind: o.kind, variant: o.variant })),
+  );
+  for (const o of a.obstacles) {
+    const count = o.kind === 'circle' ? ROCK_VARIANT_COUNT : RECT_VARIANT_COUNT;
+    assert.equal(o.variant, hashId(o.id) % count, `${o.id} 变体不是 hash(id) 结果`);
+    assert.ok(o.variant >= 0 && o.variant < count);
+    assert.equal(obstacleVariant(o.id, o.kind), o.variant);
+  }
+});
+
+test('障碍物新增视觉字段但碰撞字段与视觉 id 映射不变', () => {
+  const m = generateMap(mulberry32(8));
+  for (const o of m.obstacles) {
+    assert.equal(typeof o.id, 'string');
+    assert.equal(typeof o.variant, 'number');
+    if (o.kind === 'circle') {
+      assert.equal(typeof o.x, 'number');
+      assert.equal(typeof o.y, 'number');
+      assert.equal(typeof o.r, 'number');
+      assert.equal('w' in o, false);
+      assert.equal(obstacleVisualId(o), 'scene.rock');
+    } else {
+      assert.equal(typeof o.x, 'number');
+      assert.equal(typeof o.y, 'number');
+      assert.equal(typeof o.w, 'number');
+      assert.equal(typeof o.h, 'number');
+      assert.equal('r' in o, false);
+      assert.equal(obstacleVisualId({ ...o, variant: 0 }), 'scene.vehicle');
+      assert.equal(obstacleVisualId({ ...o, variant: 1 }), 'scene.concrete');
     }
   }
 });

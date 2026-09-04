@@ -4,7 +4,7 @@ import { mulberry32 } from './core/rng.js';
 import { createPool } from './core/pool.js';
 import { circleHit, createSpatialHash } from './core/physics.js';
 import { createCamera, updateCamera, addShake } from './core/camera.js';
-import { generateMap, MAP_SIZE } from './systems/map.js';
+import { generateMap, MAP_SIZE, renderObstacle } from './systems/map.js';
 import { createPlayer, updatePlayer, damagePlayer } from './entities/player.js';
 import { createZombie, updateZombie } from './entities/zombie.js';
 import { createWeapon, updateWeapon, weaponStats } from './entities/weapon.js';
@@ -564,16 +564,7 @@ export function createGameScene(deps) {
     ctx.lineWidth = 6;
     ctx.strokeRect(0, 0, MAP_SIZE, MAP_SIZE);
 
-    ctx.fillStyle = '#4a4a52';
-    for (const o of map.obstacles) {
-      if (o.kind === 'circle') {
-        ctx.beginPath();
-        ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillRect(o.x, o.y, o.w, o.h);
-      }
-    }
+    for (const o of map.obstacles) renderObstacle(ctx, o);
 
     // 商店建筑
     for (const s of map.shops) {

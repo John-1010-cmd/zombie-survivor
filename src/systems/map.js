@@ -1,14 +1,20 @@
 import { circleHit, circleRectHit } from '../core/physics.js';
+import { drawVisual, registerPart } from '../core/visuals.js';
+import { PALETTE } from '../config/palette.js';
 
 export const MAP_SIZE = 3000;
 const OBSTACLE_COUNT = 60;
 const MIN_GAP = 150;
 const SAFE_RADIUS = 200;
 const COIN_COUNT = 40;
-const SHOP_R = 46;
-const SHOP_INTERACT_R = 90;
-// 商店位置固定：四象限中心各 1 座 + 出生点北侧 1 座
-const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
+export const SHOP_R = 46;
+export const SHOP_INTERACT_R = 90;
+export const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
+export const ROCK_VARIANT_COUNT = 3;
+export const RECT_VARIANT_COUNT = 2;
+export const ROCK_VISUAL_ID = 'scene.rock';
+export const VEHICLE_VISUAL_ID = 'scene.vehicle';
+export const CONCRETE_VISUAL_ID = 'scene.concrete';
 
 function boundsOf(o) {
   return o.kind === 'circle' ? { x: o.x - o.r, y: o.y - o.r, w: o.r * 2, h: o.r * 2 } : o;
@@ -31,6 +37,130 @@ function insideObstacle(x, y, r, obstacles) {
     : circleRectHit(x, y, r, o));
 }
 
+export function hashId(id) {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+export function obstacleVariant(id, kind) {
+  const count = kind === 'circle' ? ROCK_VARIANT_COUNT : RECT_VARIANT_COUNT;
+  return hashId(id) % count;
+}
+
+export function obstacleVisualId(obstacle) {
+  if (obstacle.kind === 'circle') return ROCK_VISUAL_ID;
+  return obstacle.variant % 2 === 0 ? VEHICLE_VISUAL_ID : CONCRETE_VISUAL_ID;
+}
+
+const ROCK_POINTS = [
+  [[-0.82, -0.10], [-0.55, -0.72], [0.02, -0.84], [0.72, -0.55], [0.86, 0.08], [0.48, 0.74], [-0.22, 0.82], [-0.78, 0.48]],
+  [[-0.88, 0.06], [-0.64, -0.63], [-0.12, -0.86], [0.56, -0.72], [0.88, -0.08], [0.65, 0.62], [0.05, 0.86], [-0.68, 0.56]],
+  [[-0.78, -0.28], [-0.38, -0.80], [0.28, -0.78], [0.82, -0.30], [0.76, 0.42], [0.20, 0.86], [-0.52, 0.70], [-0.88, 0.20]],
+];
+
+function traceRock(ctx, points, r, ox = 0, oy = 0, sx = 1, sy = 1) {
+  ctx.beginPath();
+  for (let i = 0; i < points.length; i++) {
+    const px = ox + points[i][0] * r * sx;
+    const py = oy + points[i][1] * r * sy;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+}
+
+registerPart(ROCK_VISUAL_ID, (ctx, size, params = {}) => {
+  const r = size * 0.5;
+  const points = ROCK_POINTS[(params.variant ?? 0) % ROCK_VARIANT_COUNT];
+  ctx.save();
+  traceRock(ctx, points, r);
+  ctx.fillStyle = PALETTE.obstacle;
+  ctx.fill();
+  ctx.shadowColor = PALETTE.neon;
+  ctx.shadowBlur = 7;
+  ctx.strokeStyle = PALETTE.neonDim;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 0.28;
+  ctx.fillStyle = PALETTE.text;
+  traceRock(ctx, points, r, 0, -r * 0.18, 0.62, 0.28);
+  ctx.fill();
+  ctx.globalAlpha = 0.36;
+  ctx.fillStyle = PALETTE.hudPanel;
+  traceRock(ctx, points, r, 0, r * 0.24, 0.74, 0.25);
+  ctx.fill();
+  ctx.restore();
+});
+
+registerPart(VEHICLE_VISUAL_ID, (ctx, size, params = {}) => {
+  const w = params.width ?? size;
+  const h = params.height ?? size * 0.62;
+  ctx.save();
+  ctx.fillStyle = PALETTE.obstacle;
+  ctx.fillRect(-w * 0.5, -h * 0.5, w, h);
+  ctx.fillStyle = PALETTE.neonDim;
+  ctx.fillRect(-w * 0.30, -h * 0.28, w * 0.60, h * 0.24);
+  ctx.fillStyle = PALETTE.panel;
+  ctx.fillRect(-w * 0.24, -h * 0.24, w * 0.20, h * 0.16);
+  ctx.fillRect(w * 0.04, -h * 0.24, w * 0.20, h * 0.16);
+  ctx.fillStyle = PALETTE.hudPanel;
+  ctx.beginPath();
+  ctx.arc(-w * 0.30, h * 0.42, Math.max(5, h * 0.13), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(w * 0.30, h * 0.42, Math.max(5, h * 0.13), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowColor = PALETTE.neon;
+  ctx.shadowBlur = 6;
+  ctx.strokeStyle = PALETTE.neonDim;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-w * 0.5, -h * 0.5, w, h);
+  ctx.restore();
+});
+
+registerPart(CONCRETE_VISUAL_ID, (ctx, size, params = {}) => {
+  const w = params.width ?? size;
+  const h = params.height ?? size * 0.62;
+  ctx.save();
+  ctx.fillStyle = PALETTE.obstacle;
+  ctx.fillRect(-w * 0.5, -h * 0.5, w, h);
+  ctx.fillStyle = PALETTE.neonDim;
+  ctx.globalAlpha = 0.45;
+  ctx.fillRect(-w * 0.5, -h * 0.5, w, h * 0.18);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = PALETTE.textDim;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.34, -h * 0.28);
+  ctx.lineTo(-w * 0.08, h * 0.24);
+  ctx.lineTo(w * 0.12, -h * 0.06);
+  ctx.lineTo(w * 0.34, h * 0.28);
+  ctx.moveTo(-w * 0.08, -h * 0.38);
+  ctx.lineTo(w * 0.02, -h * 0.08);
+  ctx.lineTo(w * 0.28, -h * 0.30);
+  ctx.stroke();
+  ctx.shadowColor = PALETTE.neon;
+  ctx.shadowBlur = 6;
+  ctx.strokeStyle = PALETTE.neonDim;
+  ctx.strokeRect(-w * 0.5, -h * 0.5, w, h);
+  ctx.restore();
+});
+
+export function renderObstacle(ctx, obstacle) {
+  const circle = obstacle.kind === 'circle';
+  const x = circle ? obstacle.x : obstacle.x + obstacle.w * 0.5;
+  const y = circle ? obstacle.y : obstacle.y + obstacle.h * 0.5;
+  const size = circle ? obstacle.r * 2 : Math.max(obstacle.w, obstacle.h);
+  const params = circle
+    ? { variant: obstacle.variant }
+    : { variant: obstacle.variant, width: obstacle.w, height: obstacle.h };
+  drawVisual(ctx, obstacleVisualId(obstacle), x, y, size, { params, phase: 0 });
+}
+
 export function generateMap(rng) {
   const cx = MAP_SIZE / 2, cy = MAP_SIZE / 2;
   const shops = SHOP_POSITIONS.map(([x, y]) => ({ x, y, r: SHOP_R, interactR: SHOP_INTERACT_R }));
@@ -43,7 +173,10 @@ export function generateMap(rng) {
     const cand = rng() < 0.5
       ? { kind: 'circle', x, y, r: 20 + rng() * 40 }
       : { kind: 'rect', x: x - 30 - rng() * 50, y: y - 30 - rng() * 50, w: 60 + rng() * 100, h: 60 + rng() * 100 };
-    if (farEnough(cand, obstacles, shops)) obstacles.push(cand);
+    if (farEnough(cand, obstacles, shops)) {
+      const id = 'obstacle-' + obstacles.length;
+      obstacles.push({ ...cand, id, variant: obstacleVariant(id, cand.kind) });
+    }
   }
   const scatteredCoins = [];
   guard = 0;
