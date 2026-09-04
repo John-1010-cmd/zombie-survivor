@@ -2,8 +2,73 @@
 import { MONSTERS, EXPLODER_FUSE_TIME } from '../config/bestiary/monsters.js';
 import { TRAIL_MAX } from './projectile.js';
 import { SHAPES, drawVisual } from '../core/visuals.js';
+import { SKINS } from '../config/skins.js';
 
 export { SHAPES };
+
+const WARNED_PLAYER_SKINS = new Set();
+const DEFAULT_SKIN_ID = 'wastelandAdventurer';
+
+function playerDirection(angle) {
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'right' : 'left';
+  return dy >= 0 ? 'down' : 'up';
+}
+
+function drawWhitePlayer(ctx, player) {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(player.x, player.y);
+  ctx.lineTo(
+    player.x + Math.cos(player.facing) * player.r,
+    player.y + Math.sin(player.facing) * player.r,
+  );
+  ctx.stroke();
+}
+
+export function drawPlayer(ctx, player, timeSec, meta, { drawVisualFn = drawVisual } = {}) {
+  const selected = meta?.skins?.selected ?? DEFAULT_SKIN_ID;
+  const owned = meta?.skins?.owned;
+  const skin = SKINS[selected]
+    && (!Array.isArray(owned) || owned.includes(selected))
+    ? SKINS[selected]
+    : null;
+  const warnKey = String(selected);
+  let fallback = !skin;
+
+  ctx.save();
+  ctx.globalAlpha = player.invuln > 0
+    ? 0.45 + 0.35 * Math.sin(timeSec * 24)
+    : 1;
+  if (skin) {
+    const direction = playerDirection(player.facing);
+    const index = player.moving ? player.walkFrame % skin.framesPerDirection : 0;
+    try {
+      const drawn = drawVisualFn(ctx, skin.sprite, player.x, player.y, player.r * 2, {
+        frame: { direction, index },
+        warn: false,
+        onFallback: () => { fallback = true; },
+      });
+      if (drawn === false) fallback = true;
+    } catch {
+      fallback = true;
+    }
+  }
+  if (fallback) {
+    if (!WARNED_PLAYER_SKINS.has(warnKey)) {
+      WARNED_PLAYER_SKINS.add(warnKey);
+      console.warn(`皮肤 ${warnKey} 不可用，玩家回退白色圆球`);
+    }
+    drawWhitePlayer(ctx, player);
+  }
+  ctx.restore();
+}
 
 // 单怪绘制：发光描边 + 受击闪白 + 受伤后血条 + 引信闪烁膨胀（exploder fuse 中）。
 export function renderZombie(ctx, z, timeSec) {

@@ -187,5 +187,5 @@ test('场景物件 manifest：12 个 scene.* 条目、路径、尺寸与 prompt 
     assert.equal(asset.promptVersion, 'neon-cel-scene-v1');
     assert.equal(ASSET_BY_ID[id], asset);
   }
-  assert.equal(ASSETS.length, 21 + 12);
+  assert.equal(ASSETS.length, 21 + 12 + 6);
 });

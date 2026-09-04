@@ -36,4 +36,83 @@ export const ASSETS = [
   { id: 'scene.helicopter', path: 'assets/img/scene/helicopter.png', size: 256, promptVersion: 'neon-cel-scene-v1' },
 ];
 
+const SKIN_FRAME_ORDER = [
+  { direction: 'down', frame: 0, x: 0, y: 0, width: 128, height: 128 },
+  { direction: 'left', frame: 0, x: 128, y: 0, width: 128, height: 128 },
+  { direction: 'right', frame: 0, x: 256, y: 0, width: 128, height: 128 },
+  { direction: 'up', frame: 0, x: 384, y: 0, width: 128, height: 128 },
+  { direction: 'down', frame: 1, x: 0, y: 128, width: 128, height: 128 },
+  { direction: 'left', frame: 1, x: 128, y: 128, width: 128, height: 128 },
+  { direction: 'right', frame: 1, x: 256, y: 128, width: 128, height: 128 },
+  { direction: 'up', frame: 1, x: 384, y: 128, width: 128, height: 128 },
+];
+
+const SKIN_ASSETS = [
+  {
+    id: 'skin.wastelandAdventurer.portrait',
+    path: 'assets/img/skins/wasteland-adventurer/sprite.png',
+    size: 128,
+    promptVersion: 'neon-cel-v1',
+    crop: { x: 0, y: 0, width: 128, height: 128 },
+  },
+  {
+    id: 'skin.wastelandAdventurer.sprite',
+    path: 'assets/img/skins/wasteland-adventurer/sprite.png',
+    size: 128,
+    promptVersion: 'neon-cel-v1',
+    atlas: {
+      width: 512,
+      height: 256,
+      frameSize: 128,
+      columns: 4,
+      rows: 2,
+      frameOrder: SKIN_FRAME_ORDER,
+    },
+  },
+  {
+    id: 'skin.neonMercenary.portrait',
+    path: 'assets/img/skins/neon-mercenary/sprite.png',
+    size: 128,
+    promptVersion: 'neon-cel-v1',
+    crop: { x: 0, y: 0, width: 128, height: 128 },
+  },
+  {
+    id: 'skin.neonMercenary.sprite',
+    path: 'assets/img/skins/neon-mercenary/sprite.png',
+    size: 128,
+    promptVersion: 'neon-cel-v1',
+    atlas: {
+      width: 512,
+      height: 256,
+      frameSize: 128,
+      columns: 4,
+      rows: 2,
+      frameOrder: SKIN_FRAME_ORDER,
+    },
+  },
+  {
+    id: 'skin.nightHunter.portrait',
+    path: 'assets/img/skins/night-hunter/sprite.png',
+    size: 128,
+    promptVersion: 'neon-cel-v1',
+    crop: { x: 0, y: 0, width: 128, height: 128 },
+  },
+  {
+    id: 'skin.nightHunter.sprite',
+    path: 'assets/img/skins/night-hunter/sprite.png',
+    size: 128,
+    promptVersion: 'neon-cel-v1',
+    atlas: {
+      width: 512,
+      height: 256,
+      frameSize: 128,
+      columns: 4,
+      rows: 2,
+      frameOrder: SKIN_FRAME_ORDER,
+    },
+  },
+];
+
+ASSETS.push(...SKIN_ASSETS);
+
 export const ASSET_BY_ID = Object.fromEntries(ASSETS.map(asset => [asset.id, asset]));

@@ -31,7 +31,7 @@ import {
   spawnExplosion, spawnLightning, updateEffects, renderEffects,
 } from './entities/effects.js';
 import { MONSTERS } from './config/bestiary/monsters.js';
-import { renderZombie, renderProjectiles } from './entities/render.js';
+import { renderZombie, renderProjectiles, drawPlayer } from './entities/render.js';
 import { BEHAVIORS } from './systems/behaviors.js';
 import { recordKill } from './core/meta.js';
 import { renderHud } from './systems/hud.js';
@@ -660,19 +660,8 @@ export function createGameScene(deps) {
 
     if (scene.helicopter) renderHelicopter(ctx, scene.helicopter, scene.time);
 
-    // 玩家
-    if (player.invuln > 0) ctx.globalAlpha = 0.45 + 0.35 * Math.sin(scene.time * 24);
-    ctx.fillStyle = PALETTE.text;
-    ctx.beginPath();
-    ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = PALETTE.text;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(player.x, player.y);
-    ctx.lineTo(player.x + Math.cos(player.facing) * player.r, player.y + Math.sin(player.facing) * player.r);
-    ctx.stroke();
+    // 玩家：selected 皮肤精灵，资源异常时由 drawPlayer 绘制白色圆球与朝向线
+    drawPlayer(ctx, player, scene.time, meta);
 
     // 弹道：visual 驱动的几何特效 + 渐隐拖尾（设计 §9.2，entities/render.js）
     renderProjectiles(ctx, projectiles);

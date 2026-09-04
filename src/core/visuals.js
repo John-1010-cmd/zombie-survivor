@@ -1,4 +1,5 @@
 import { onPaletteChange, PALETTE } from '../config/palette.js';
+import { ASSET_BY_ID } from '../config/assets.js';
 
 export const SHAPES = Object.create(null);
 export const PARTS = Object.create(null);
@@ -180,16 +181,44 @@ export function drawVisual(ctx, id, x, y, size, options = {}) {
   if (IMAGE_URLS.has(id)) {
     const image = IMAGE_CACHE.get(id);
     if (image) {
+      const asset = ASSET_BY_ID?.[id];
+      if (asset?.atlas && settings.frame) {
+        const frameDef = asset.atlas.frameOrder?.find(
+          f => f.direction === settings.frame.direction && f.frame === settings.frame.index,
+        );
+        if (frameDef) {
+          ctx.drawImage(
+            image,
+            frameDef.x, frameDef.y, frameDef.width, frameDef.height,
+            x - size, y - size, size * 2, size * 2,
+          );
+          return true;
+        }
+        settings.onFallback?.();
+        paintFallback(ctx, x, y, size, settings);
+        return false;
+      }
+      if (asset?.crop) {
+        ctx.drawImage(
+          image,
+          asset.crop.x, asset.crop.y, asset.crop.width, asset.crop.height,
+          x - size, y - size, size * 2, size * 2,
+        );
+        return true;
+      }
       ctx.drawImage(image, x - size, y - size, size * 2, size * 2);
       return true;
     }
-    if (!FAILED_IMAGES.has(id))
+    if (!FAILED_IMAGES.has(id) && settings.warn !== false)
       warnOnce(`image:${id}`, `[visuals] 图片视觉 "${id}" 尚未预加载，回退 circle 占位`);
+    settings.onFallback?.();
     paintFallback(ctx, x, y, size, settings);
     return false;
   }
 
-  warnOnce(`unknown:${id}`, `[visuals] 未知视觉 ID "${id}"，回退 circle 占位`);
+  if (settings.warn !== false)
+    warnOnce(`unknown:${id}`, `[visuals] 未知视觉 ID "${id}"，回退 circle 占位`);
+  settings.onFallback?.();
   paintFallback(ctx, x, y, size, settings);
   return false;
 }
@@ -210,7 +239,8 @@ export function getVisualCanvas(id, size, options = {}) {
   if (!Number.isFinite(size) || size <= 0)
     throw new RangeError('getVisualCanvas(id, size) requires a positive finite size');
   const pixelSize = Math.max(1, Math.round(size));
-  const key = `${id}:${pixelSize}`;
+  const frameKey = options?.frame ? `:${options.frame.direction}:${options.frame.index}` : '';
+  const key = `${id}:${pixelSize}${frameKey}`;
   if (VISUAL_CANVAS_CACHE.has(key)) return VISUAL_CANVAS_CACHE.get(key);
 
   const canvas = createCanvas(pixelSize, options ?? {});
