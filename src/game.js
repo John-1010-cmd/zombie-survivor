@@ -16,9 +16,10 @@ import { createHelicopter, updateHelicopter, renderHelicopter } from './entities
 import { createInventory, addItem, useItem } from './systems/inventory.js';
 import { catalogFor, buy } from './systems/shop.js';
 import { createAux, spawnAuxBodies, updateAuxBodies } from './entities/companions.js';
-import { createTurret, updateTurret } from './entities/turret.js';
+import { createTurret, updateTurret, TURRET_VISUAL_ID } from './entities/turret.js';
 import { createTeslaBall, updateTeslaBall } from './entities/teslaball.js';
 import { createWallSegment } from './entities/wall.js';
+import { drawVisual } from './core/visuals.js';
 import { ITEMS } from './config/items.js';
 import { MODES, TIER_DURATION, MAX_ZOMBIES } from './config/difficulty.js';
 import { ADVENTURE_TIER_DURATION, ADVENTURE_DURATION, adventureLevelById, adventureLevelIndex, makeAdventureCfg } from './config/adventure.js';
@@ -176,19 +177,25 @@ export function createGameScene(deps) {
 
   function spawnProjectile(opts) {
     if (activeProjectiles >= MAX_PROJECTILES) return;
-    // 池化复用对象可能残留旧字段，统一归一（turret/aux 弹不总带全字段；
-    // frags/chainMult/chainDmgMult 缺失会继承前一颗榴弹/磁电弹的残留，导致碎片再次分裂——迭代 06 修复）
-    const fromPlayer = opts.fromPlayer;
+    const { muzzleFlash, ...projectileOpts } = opts;
+    if (muzzleFlash && scene.particles.length < MAX_PARTICLES) {
+      const distance = muzzleFlash.distance ?? 20;
+      const mx = opts.x + Math.cos(opts.angle) * distance;
+      const my = opts.y + Math.sin(opts.angle) * distance;
+      spawnParticles(particlePool, scene.particles, mx, my,
+        muzzleFlash.color, muzzleFlash.count ?? 2, rng);
+    }
+    // 池化复用对象可能残留旧字段，统一归一。
+    const fromPlayer = projectileOpts.fromPlayer;
     const o = {
       aoe: 0, arc: false, chain: 0, pierce: 0, knockback: 0,
       frags: null, chainMult: 0.8, chainDmgMult: 1,
-      ...opts,
+      ...projectileOpts,
     };
     const p = projPool.obtain(o);
     activeProjectiles++;
     projectiles.push(p);
-    lastShotAngle = o.angle; // 记录弹道角（电磁球扇形发散用）
-    // 射击音仅主武器触发且节流 0.12s
+    lastShotAngle = o.angle;
     if (fromPlayer) {
       const sid = scene.weapon.id === 'mg' ? 'shootMG' : 'shoot';
       if (sid !== lastShotSoundId || scene.time - lastShotSound > 0.12) {
@@ -639,26 +646,16 @@ export function createGameScene(deps) {
       }
     }
 
-    // 固定火炮：深灰炮座 + 炮管朝向 + 耐久环
+    // 固定火炮：组合式程序化 visual，炮口闪光由 spawnProjectile 的现有效果管线负责
     for (const t of scene.turrets) {
-      ctx.fillStyle = '#555';
-      ctx.beginPath();
-      ctx.arc(t.x, t.y, t.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#999';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(t.x, t.y);
-      const aim = t.weapon.lastAim ?? 0;
-      ctx.lineTo(t.x + Math.cos(aim) * t.r * 1.4, t.y + Math.sin(aim) * t.r * 1.4);
-      ctx.stroke();
-      if (t.hp < t.maxHp) {
-        ctx.strokeStyle = '#f80';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(t.x, t.y, t.r + 5, -Math.PI / 2, -Math.PI / 2 + (t.hp / t.maxHp) * Math.PI * 2);
-        ctx.stroke();
-      }
+      drawVisual(ctx, TURRET_VISUAL_ID, t.x, t.y, t.r, {
+        params: {
+          aimAngle: t.aimAngle,
+          hp: t.hp,
+          maxHp: t.maxHp,
+        },
+        phase: scene.time,
+      });
     }
 
     // 僵尸：几何矢量渲染（entities/render.js，设计 §9.1）
