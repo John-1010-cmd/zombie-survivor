@@ -4,11 +4,13 @@
 
 **Goal:** 将 zombie-survivor 的 UI 与视觉从几何原型升级为暗黑霓虹赛璐璐体系——响应式铺满画布、统一视觉注册表、全套 PNG 图标、火炮/围墙/辅助武器/场景组合建模、主角皮肤系统、图鉴强关联。
 
-**Architecture:** 混合美术路线：UI 图标与主角皮肤使用 k3-256k 生成的 128×128 透明底 PNG（manifest 登记）；怪物/弹道/部署物/场景保持程序化几何矢量，统一收口到 `src/core/visuals.js` 注册表（形状+部件+图片三类视觉，游戏内与图鉴同源渲染）。响应式 canvas = 窗口×min(DPR,2)，逻辑坐标保持 CSS 像素。
+**Architecture:** 混合美术路线：UI 图标与主角皮肤使用 k3-256k 生成的 128×128 透明底 PNG（manifest 登记）；障碍物、补给站、暗色草地、地雷、特斯拉球与直升机优先使用场景 PNG 精灵/纹理，图片未就绪或加载失败时保留程序化 fallback；怪物、弹道、部署物、辅助武器与纯 UI 覆盖层保持程序化几何矢量，统一收口到 `src/core/visuals.js` 注册表（形状+部件+图片三类视觉，游戏内与图鉴同源渲染）。响应式 canvas = 窗口×min(DPR,2)，逻辑坐标保持 CSS 像素。
 
 **Tech Stack:** 原生 JavaScript ES Modules + Canvas 2D；无构建工具；测试 `node --test`（node:test + node:assert/strict）；图片资产经 gpt-image-review 技能由 k3-256k 生成与审美评审；编码/文档/截图验收由 gpt-5.6-luna-fast 执行。
 
 **Spec:** `docs/superpowers/specs/2026-09-02-ui-visual-overhaul-design.md`（本计划逐项实现该 spec；执行者须同读）
+
+> 2026-09-04 修订：新增 Task 15A/15B，Task 16/17 场景物件改 PNG 精灵路线，依据 spec 0.2a（docs/superpowers/specs/2026-09-02-ui-visual-overhaul-design.md）。
 
 ## Global Constraints
 
@@ -16,7 +18,7 @@
 - 测试：`npm test` = `node --test`；TDD——先写/改测试再实现；每任务一次 commit，提交信息用中文 `UI改造任务N: …` 风格。
 - 性能红线：DPR 上限 `min(devicePixelRatio, 2)`；现有满载压测场景连续 5s 平均帧时 ≤20ms；地形 tile 预渲染平铺、禁止每帧重建；`getVisualCanvas` 按 `id+size` 键控缓存；同帧 `drawImage` 次数受控。
 - 色彩：canvas 内禁止新增硬编码十六进制色值，一律走 `src/config/palette.js` 的 `PALETTE`（与 `style.css :root` 同源）。
-- 资产：PNG 统一 128×128 透明底、prompt 模板 `neon-cel-v1`（入库 `docs/superpowers/visual-asset-prompt-template.md`）；出图先样图验收再批量；不合格不登记 manifest；生成失败用程序化占位（`promptVersion: 'placeholder-v0'`）先保证代码不阻塞。
+- 资产：UI PNG 统一 128×128 透明底并使用 prompt 模板 `neon-cel-v1`；场景 PNG 按 Task 15A 的 256×256/128×128 原子尺寸并使用 `neon-cel-scene-v1`（模板均为 `docs/superpowers/visual-asset-prompt-template.md`）；出图先样图验收再批量；不合格不登记 manifest；生成失败用程序化 fallback（`promptVersion: 'placeholder-v0'`）先保证代码不阻塞。
 - 非目标（spec §12，严禁触碰）：音频、`src/core/storage.js`（`zs_best`/`zs_settings`）、武器伤害公式、玩法逻辑数值（怪物数值/刷怪预算/AI/碰撞/地图尺寸/商店半径/部署物耐久/辅助武器 orbit 与角速）。
 - 接口契约：跨任务的函数名/字段名/视觉 ID 以各任务 `Interfaces` 块为准，禁止改名。
 - 验收：每个任务包完成后用 webbridge 实景截图与 spec 目标逐项核对；不能只凭 import/编译通过判定完成。
@@ -4930,7 +4932,68 @@ git add src/systems/map.js src/game.js test/map.test.js
 git commit -m "UI改造任务15: 霓虹补给站与交互半径脉动"
 ```
 
-### Task 16: 暗色噪点草地 tile、霓虹边界与场景 palette 化
+### Task 15A: 场景物件 PNG 资产包（车道 B 出图，非代码任务）
+
+**类型**: 资产生成，走 gpt-image-review 出图管线 + k3-256k 审美迭代（spec 0.2a、§3.3 出图规则、§8 审美流程）。本任务不修改代码。
+
+**交付清单**（透明底 PNG、主体居中、45° 俯视微侧、暗黑霓虹赛璐璐风、与 palette 霓绿/金令牌融合）:
+
+| 资产 id（供 15B 登记） | 文件路径 | 原子尺寸 | 说明 |
+|---|---|---|---|
+| `scene.obstacle.rock.0/1/2` | `assets/img/scene/obstacles/rock-0.png` 等 3 张 | 256×256 | 岩石 3 变体，不规则 silhouette，场内显示约 60–90px |
+| `scene.obstacle.vehicle.0/1` | `assets/img/scene/obstacles/vehicle-0.png` 等 2 张 | 256×256 | 废弃车辆 2 变体，俯视残骸感 |
+| `scene.obstacle.concrete.0/1` | `assets/img/scene/obstacles/concrete-0.png` 等 2 张 | 256×256 | 混凝土块 2 变体 |
+| `scene.supplyStation` | `assets/img/scene/supply-station.png` | 256×256 | 霓虹补给站棚屋主体，**不含文字**（SUPPLY 标签由代码绘制） |
+| `scene.terrain.grass` | `assets/img/scene/terrain/grass-tile.png` | 256×256 | 暗色草地**无缝可平铺**纹理，四边连续无接缝，整体明度低于 PALETTE.bg 一档 |
+| `scene.mine` | `assets/img/scene/mine.png` | 128×128 | 地雷主体，不含警示光环（覆盖层程序化） |
+| `scene.teslaBall` | `assets/img/scene/tesla-ball.png` | 128×128 | 电磁球主体，青霓色调，不含电弧 |
+| `scene.helicopter` | `assets/img/scene/helicopter.png` | 256×256 | 直升机机身主体，旋翼区域留透明（旋翼由程序化层旋转绘制） |
+
+**流程约束**:
+- 每资产先生成 1 张样图送 k3-256k 审美（维度：风格一致性、透明底完整性、场内目标尺寸辨识度、令牌融合度；草地另验无缝性），PASS 后定稿，不达标重出。
+- prompt 模板以 docs/superpowers/visual-asset-prompt-template.md 为底，promptVersion 记 `neon-cel-scene-v1`。
+- prompt、版本与审美结论写入 docs/ 资产记录（沿用既有资产记录文件格式）。
+- 本任务只做资产与记录；`src/config/assets.js` 登记与渲染接线属 Task 15B。
+
+**验收**: 12 张资产全部 k3 PASS 并落盘到上表路径；资产记录更新完毕。
+
+### Task 15B: 场景物件图片加载与障碍物/补给站 PNG 渲染（含程序化 fallback）
+
+**Files:**
+- Modify: `src/core/visuals.js`（新增导出）
+- Modify: `src/config/assets.js`（追加 scene.* 条目）
+- Modify: `src/systems/map.js`（障碍物/补给站渲染路径；行号已漂移，按内容定位）
+- Test: `test/map.test.js`、visuals 对应测试文件
+
+**Interfaces:**
+- Consumes: `registerImage(id, url)`、`drawVisual(ctx, id, x, y, size, options)`、Task 14 的 `ROCK_VISUAL_ID/VEHICLE_VISUAL_ID/CONCRETE_VISUAL_ID/renderObstacle/obstacleVisualId/obstacleVariant`、Task 15 的 `renderShop/shopPulseState/SUPPLY_LABEL 机制`、Task 15A 的 12 张 PNG
+- Produces: `getLoadedImage(id) → HTMLImageElement | null`（新增导出，只读 IMAGE_CACHE，不触发加载、不 warn；未注册/未就绪/失败均返回 null）
+
+**背景契约（必须先读码确认）**:
+- `src/core/visuals.js` 的 `drawVisual` 查找顺序为 SHAPES → PARTS → IMAGE_URLS；图片未就绪时回退 `paintFallback` 圆形占位。因此本任务**不直接**把障碍物注册为纯图片视觉，而是保留 Task 14/15 的程序化部件注册，在部件回调内部做"有图贴图、无图走原程序化路径"的混合渲染。
+- `drawVisual` 的图片分支把图绘在以 (x,y) 为中心、`2*size` 边长的盒内；部件分支由部件自控坐标。部件内贴图请自行用 `ctx.drawImage(img, ...)` 精确控制。
+- drawVisual 动态参数必须嵌套在 `{ params: {...}, phase }` 下传递（visuals.js 只透传 settings.params，顶层参数被静默丢弃）。
+
+**实现契约**:
+1. `visuals.js` 新增并导出 `getLoadedImage(id)`：IMAGE_CACHE 命中返回 image，否则 null。
+2. `assets.js` 追加 12 条 `scene.*` manifest 条目（id/路径/尺寸/promptVersion 与 Task 15A 表一致）；确认启动注册与 `preloadVisuals()` 自动覆盖新 id；若有测试断言 ASSETS 数量或键集合，同步更新为新契约。
+3. 障碍物变体扩展：`RECT_VARIANT_COUNT` 由 2 提为 4——variant 0/1 → 废弃车辆（`scene.obstacle.vehicle.0/1`），variant 2/3 → 混凝土块（`scene.obstacle.concrete.${variant-2}`）；圆形岩石 3 变体 → `scene.obstacle.rock.${variant % 3}`。`obstacleVisualId` 与相关映射同步修订，同 id 同精灵的确定性不变（沿用 hashId，不消费 rng）。
+4. `renderObstacle` 混合渲染：进入部件/渲染函数后先 `getLoadedImage(spriteId)`，有图则按障碍实际尺寸居中 `ctx.drawImage`（圆形用 `2r×2r`，矩形用 `w×h`）并直接返回；无图走 Task 14 既有程序化路径，一字不改。
+5. `renderShop` 混合渲染：主体先查 `getLoadedImage('scene.supplyStation')`，有图则居中贴图（尺寸按 SHOP_R 比例，参考 Task 15 棚屋包围盒）；`SUPPLY` 标签与 `shopPulseState` 交互光环覆盖层维持程序化不变；无图走 Task 15 棚屋组合。
+6. 性能：`drawImage` 仅来自缓存；禁止每帧 `new Image`、禁止每帧解码；失败路径不重复 warn（沿用 warnOnce）。
+
+**TDD 步骤**:
+1. 先写失败测试：`getLoadedImage` 未注册 id 返回 null；`obstacleVisualId`/映射的四变体新契约；mock ctx 下探针断言——图像就绪时到达 `drawImage` 的实际实参（源图、坐标、宽高），未就绪时程序化路径的 fill/stroke 调用真实发生；assets.js 含 12 条 scene.* 条目。
+2. 确认 RED 后实现至 GREEN，再跑全量 `npm test`（当前基线 322，加上新用例须全绿）。
+3. webbridge 局内截图对照 `.superpowers/sdd/2026-09-02-ui-visual-overhaul/obstacle-before-ingame.png`，确认障碍物/补给站呈现 PNG 精灵且交互光环/标签仍在。
+
+**Git 纪律（必须逐条遵守）**: 所有 git 命令带 `-c core.protectNTFS=false`；禁止 `git add -A`，只显式 add 本任务文件；提交前 `git status --short` 核对暂存集无意外删除；提交信息 `UI改造任务15B: 场景物件图片加载与障碍物/补给站 PNG 渲染`；提交后 `git show --stat HEAD` 验证只含预期文件；报告写入 `.superpowers/sdd/2026-09-02-ui-visual-overhaul/task-15b-report.md`（该目录被 gitignore，需 `add -f`）并随同一提交。
+
+**Depends on**: Task 15A（资产落盘）。若资产未就绪，本任务可先完成代码与测试（fallback 路径全覆盖），实景截图项待资产到位后补。
+
+### Task 16: 暗色草地 PNG 纹理 tile、霓虹边界与场景 palette 化
+
+> 2026-09-04 修订：地形 tile 由程序化噪点改为 PNG 纹理（spec 0.2a）；边界与 palette 化范围不变。
 
 **Files:**
 - Modify: `src/systems/map.js:3-59`
@@ -4938,10 +5001,10 @@ git commit -m "UI改造任务15: 霓虹补给站与交互半径脉动"
 - Test: `test/map.test.js:1-83`
 
 **Interfaces:**
-- Consumes: `PALETTE` 的 `ground`、`obstacle`、`neon`、`neonDim`、`boundary`、`hudPanel`、`gold`、`text`、`textDim` 字段；Task 14 的 `renderObstacle(ctx, obstacle)`；Task 15 的 `renderShop(ctx, shop, player, timeSec)`；Task 1 相机的 `viewW/viewH` CSS 逻辑视口与 HUD 的 `renderHud(ctx, scene, viewport)`
-- Produces: `TERRAIN_TILE_SIZE = 128`；`createTerrainTile(palette, canvasFactory) → canvas|null`；`createTerrainRenderer({ palette, canvasFactory }) → { draw(ctx, viewport), getTile(), getBuildCount(), invalidate() }`；`draw(ctx, viewport)` 只按可见世界范围平铺离屏 tile，调色板键变化后只重建一次
+- Consumes: `PALETTE` 的 `ground`、`obstacle`、`neon`、`neonDim`、`boundary`、`hudPanel`、`gold`、`text`、`textDim` 字段；Task 14 的 `renderObstacle(ctx, obstacle)`；Task 15 的 `renderShop(ctx, shop, player, timeSec)`；Task 15B 的 `getLoadedImage(id)` 与 `scene.terrain.grass` 缓存纹理；Task 1 相机的 `viewW/viewH` CSS 逻辑视口与 HUD 的 `renderHud(ctx, scene, viewport)`
+- Produces: `TERRAIN_TILE_SIZE = 128`；`createTerrainTile(palette, canvasFactory, imageLoader) → canvas|null`；`createTerrainRenderer({ palette, canvasFactory, imageLoader }) → { draw(ctx, viewport), getTile(), getBuildCount(), invalidate() }`；`draw(ctx, viewport)` 只按可见世界范围平铺离屏 tile，调色板键变化后只重建一次
 
-本任务不生成 PNG。地面、边界和所有 `game.js` 场景绘制颜色使用 `PALETTE` 语义字段；程序化地形 tile 只在地图初始化或 palette 键变化时生成，resize 只改变可见 viewport，不触发每帧重建。
+本任务不生成 PNG 资产。地形 tile 在地图初始化时通过 Task 15B 的 `getLoadedImage('scene.terrain.grass')` 读取缓存纹理，一次性合成离屏 tile，可按 `PALETTE` 对纹理着色/调暗；图片未就绪时只绘制 `PALETTE.ground` 纯色基底。之后按可见世界范围平铺该合成 tile；palette 键变化时重建一次，resize 只改变可见 viewport，不触发每帧重建。地面、霓虹边界和所有 `game.js` 场景绘制颜色继续使用 `PALETTE` 语义字段。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -4956,7 +5019,7 @@ import {
 } from '../src/systems/map.js';
 ```
 
-在 Task 15 的用例后追加以下 Node 安全测试。测试通过注入 `canvasFactory` 统计离屏 canvas 创建次数，不创建真实 DOM 或 PNG：
+在 Task 15B 的用例后追加以下 Node 安全测试。通过注入 `canvasFactory` 统计离屏 canvas 创建次数，并注入缓存纹理探针确认合成阶段的 `drawImage` 源来自 `scene.terrain.grass` 已缓存图片；不创建真实 DOM 或读取 PNG 文件：
 
 ```js
 function fakeTileFactory(counter) {
@@ -4965,7 +5028,8 @@ function fakeTileFactory(counter) {
     const tileCtx = {
       fillStyle: '',
       globalAlpha: 1,
-      fillRect() {},
+      fillRect() { counter.fillRectCount++; },
+      drawImage(source, ...args) { counter.textureDraws.push({ source, args }); },
     };
     return {
       width: size,
@@ -4982,27 +5046,41 @@ const TERRAIN_PALETTE = {
   neonDim: '#2a4a3a',
 };
 
-test('地形 tile 在初始化后只生成一次，draw 按可见范围平铺且不逐帧重建', () => {
+test('地形 tile 在初始化后只生成一次，draw 按可见范围平铺缓存合成 tile 且不逐帧重建', () => {
   assert.equal(TERRAIN_TILE_SIZE, 128);
-  const counter = { count: 0 };
+  const counter = { count: 0, fillRectCount: 0, textureDraws: [] };
+  const cachedTexture = { id: 'scene.terrain.grass' };
   const renderer = createTerrainRenderer({
     palette: TERRAIN_PALETTE,
     canvasFactory: fakeTileFactory(counter),
+    imageLoader: id => id === 'scene.terrain.grass' ? cachedTexture : null,
   });
-  const target = { drawImageCount: 0, drawImage() { this.drawImageCount++; } };
+  const target = {
+    drawImageSources: [],
+    drawImage(source, ...args) { this.drawImageSources.push({ source, args }); },
+  };
   const viewport = { x: 0, y: 0, width: 256, height: 128 };
   renderer.draw(target, viewport);
   renderer.draw(target, viewport);
   assert.equal(counter.count, 1);
   assert.equal(renderer.getBuildCount(), 1);
-  assert.equal(target.drawImageCount, 4);
+  assert.equal(target.drawImageSources.length, 2);
+  assert.equal(counter.textureDraws.length, 1);
+  assert.equal(counter.textureDraws[0].source, cachedTexture);
+  assert.deepEqual(counter.textureDraws[0].args, [0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE]);
+  assert.ok(target.drawImageSources.every(item => item.source === renderer.getTile()));
   assert.equal(renderer.getTile().width, TERRAIN_TILE_SIZE);
 });
 
 test('地形 palette 变化只触发一次重建，连续 draw 不重复生成', () => {
-  const counter = { count: 0 };
+  const counter = { count: 0, fillRectCount: 0, textureDraws: [] };
+  const cachedTexture = { id: 'scene.terrain.grass' };
   const palette = { ...TERRAIN_PALETTE };
-  const renderer = createTerrainRenderer({ palette, canvasFactory: fakeTileFactory(counter) });
+  const renderer = createTerrainRenderer({
+    palette,
+    canvasFactory: fakeTileFactory(counter),
+    imageLoader: () => cachedTexture,
+  });
   const target = { drawImage() {} };
   const viewport = { x: 64, y: 64, width: 64, height: 64 };
   renderer.draw(target, viewport);
@@ -5010,10 +5088,25 @@ test('地形 palette 变化只触发一次重建，连续 draw 不重复生成',
   renderer.draw(target, viewport);
   renderer.draw(target, viewport);
   assert.equal(counter.count, 2);
+  assert.equal(counter.textureDraws.length, 2);
   assert.equal(renderer.getBuildCount(), 2);
   renderer.invalidate();
   renderer.draw(target, viewport);
   assert.equal(counter.count, 3);
+  assert.equal(counter.textureDraws.length, 3);
+});
+
+test('地形图片未就绪时回退到纯色基底，不尝试绘制未缓存纹理', () => {
+  const counter = { count: 0, fillRectCount: 0, textureDraws: [] };
+  const renderer = createTerrainRenderer({
+    palette: TERRAIN_PALETTE,
+    canvasFactory: fakeTileFactory(counter),
+    imageLoader: () => null,
+  });
+  renderer.draw({ drawImage() {} }, { x: 0, y: 0, width: 64, height: 64 });
+  assert.equal(counter.count, 1);
+  assert.equal(counter.textureDraws.length, 0);
+  assert.ok(counter.fillRectCount >= 1);
 });
 ```
 
@@ -5025,9 +5118,11 @@ Expected: FAIL with `SyntaxError: The requested module '../src/systems/map.js' d
 
 - [ ] **Step 3: 最小实现**
 
-在 Task 15 的 `src/systems/map.js` 末尾追加以下离屏 tile 实现。`defaultCanvasFactory` 在 Node 中返回 `null`，浏览器中才创建 canvas；tile 内的噪点坐标由固定整数序列生成，不读取 `Math.random()`：
+在 Task 15B 的 `getLoadedImage` 和 `scene.terrain.grass` manifest 已可用前提下，在 `src/systems/map.js` 末尾追加以下离屏 tile 实现。`defaultCanvasFactory` 在 Node 中返回 `null`，浏览器中才创建 canvas；生产路径的 `imageLoader` 默认读取图片缓存，测试可注入已缓存纹理或 `null`，不得在这里创建 `Image`：
 
 ```js
+import { getLoadedImage } from '../core/visuals.js';
+
 export const TERRAIN_TILE_SIZE = 128;
 
 function defaultCanvasFactory(size) {
@@ -5043,29 +5138,39 @@ function terrainPaletteKey(palette) {
     String(palette.neon) + '|' + String(palette.neonDim);
 }
 
-export function createTerrainTile(palette = PALETTE, canvasFactory = defaultCanvasFactory) {
+export function createTerrainTile(
+  palette = PALETTE,
+  canvasFactory = defaultCanvasFactory,
+  imageLoader = getLoadedImage,
+) {
   const canvas = canvasFactory(TERRAIN_TILE_SIZE);
   if (!canvas || typeof canvas.getContext !== 'function') return null;
   canvas.width = TERRAIN_TILE_SIZE;
   canvas.height = TERRAIN_TILE_SIZE;
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
-  ctx.fillStyle = palette.ground;
-  ctx.globalAlpha = 1;
-  ctx.fillRect(0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
-  for (let i = 0; i < 180; i++) {
-    const x = (i * 73 + 17) % TERRAIN_TILE_SIZE;
-    const y = (i * 151 + 29) % TERRAIN_TILE_SIZE;
-    const side = i % 9 === 0 ? 2 : 1;
-    ctx.fillStyle = i % 5 === 0 ? palette.neonDim : palette.obstacle;
-    ctx.globalAlpha = i % 7 === 0 ? 0.22 : 0.10;
-    ctx.fillRect(x, y, side, side);
+  const source = typeof imageLoader === 'function'
+    ? imageLoader('scene.terrain.grass')
+    : null;
+  if (source && typeof ctx.drawImage === 'function') {
+    ctx.drawImage(source, 0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = palette.ground;
+    ctx.fillRect(0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
+  } else {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = palette.ground;
+    ctx.fillRect(0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
   }
   ctx.globalAlpha = 1;
   return canvas;
 }
 
-export function createTerrainRenderer({ palette = PALETTE, canvasFactory = defaultCanvasFactory } = {}) {
+export function createTerrainRenderer({
+  palette = PALETTE,
+  canvasFactory = defaultCanvasFactory,
+  imageLoader = getLoadedImage,
+} = {}) {
   let tile = null;
   let builtKey = null;
   let buildCount = 0;
@@ -5073,7 +5178,7 @@ export function createTerrainRenderer({ palette = PALETTE, canvasFactory = defau
   function ensureTile() {
     const key = terrainPaletteKey(palette);
     if (key !== builtKey) {
-      tile = createTerrainTile(palette, canvasFactory);
+      tile = createTerrainTile(palette, canvasFactory, imageLoader);
       builtKey = key;
       buildCount++;
     }
@@ -5114,11 +5219,12 @@ import { generateMap, MAP_SIZE, renderObstacle, renderShop, createTerrainRendere
 import { PALETTE } from './config/palette.js';
 ```
 
-在 `const map = generateMap(rng);` 后创建一次场景级 renderer，并把它挂到 scene 以便调试检查缓存次数：
+在 `const map = generateMap(rng);` 后创建一次场景级 renderer，并立即合成一次地形 tile；把 renderer 挂到 scene 以便调试检查缓存次数：
 
 ```js
 const map = generateMap(rng);
 const terrain = createTerrainRenderer({ palette: PALETTE });
+terrain.getTile();
 const player = createPlayer(map.spawn.x, map.spawn.y);
 ```
 
@@ -5335,20 +5441,22 @@ PALETTE.neon
 
 Run: `node --test test/map.test.js`
 
-Expected: PASS（12 个用例；地形 tile 初始化、可见范围平铺、palette 变化重建和全部地图逻辑断言通过）。
+Expected: PASS（13 个用例；地形 tile 初始化、可见范围平铺、palette 变化重建、缓存纹理来源和未就绪 fallback 断言通过）。
 
 Run: `npm test`
 
-Expected: PASS。随后用 webbridge 在窄视口、宽视口和高 DPR 视口分别截图：地面为暗色噪点草地，tile 不随每帧重建；边界为霓虹警戒线；地图 3000×3000、相机夹紧和 HUD 逻辑视口不因 DPR 放大；截图核对 `game.js` 场景没有旧的 `#1a2418`、`#4a4a52` 等硬编码颜色。
+Expected: PASS。随后用 webbridge 在窄视口、宽视口和高 DPR 视口分别截图：地面为暗色 PNG 草地纹理（图片未就绪时为纯色 fallback），tile 只在初始化或 palette 变化时重建、不随每帧重建；边界为霓虹警戒线；地图 3000×3000、相机夹紧和 HUD 逻辑视口不因 DPR 放大；截图核对 `game.js` 场景没有旧的 `#1a2418`、`#4a4a52` 等硬编码颜色。
 
 - [ ] **Step 5: 提交**
 
 ```bash
 git add src/systems/map.js src/game.js test/map.test.js
-git commit -m "UI改造任务16: 暗色噪点地形与场景 palette 化"
+git commit -m "UI改造任务16: 暗色 PNG 草地纹理与场景 palette 化"
 ```
 
 ### Task 17: 地雷、特斯拉球与直升机组合视觉
+
+> 2026-09-04 修订：三实体由纯程序化组合改为 PNG 主体 + 程序化动效层（spec 0.2a）；逻辑与数值约束不变。
 
 **Files:**
 - Modify: `src/entities/teslaball.js:1-31`
@@ -5358,10 +5466,10 @@ git commit -m "UI改造任务16: 暗色噪点地形与场景 palette 化"
 - Test: `test/helicopter.test.js:1-69`
 
 **Interfaces:**
-- Consumes: `registerPart(id, drawFn(ctx,size,params,phase))`、`drawVisual(ctx, id, x, y, size, options?)` from `src/core/visuals.js`；`PALETTE.neon`、`PALETTE.neonDim`、`PALETTE.gold`、`PALETTE.panel`、`PALETTE.obstacle`；`createTeslaBall/updateTeslaBall` 与 `createHelicopter/updateHelicopter` 的现有逻辑签名；Task 16 的 palette 化场景 render
-- Produces: `MINE_VISUAL_ID = 'mine'`；`TESLA_BALL_VISUAL_ID = 'teslaBall'`；`HELICOPTER_VISUAL_ID = 'helicopter'`；`createTeslaBall(...)` 返回新增 `visualId: TESLA_BALL_VISUAL_ID`；`createHelicopter(...)` 返回新增 `visualId: HELICOPTER_VISUAL_ID`；`renderTeslaBall(ctx, ball, phase) → void`；`renderHelicopter(ctx, helicopter, phase = helicopter.t) → void`
+- Consumes: `getLoadedImage(id)`、`registerPart(id, drawFn(ctx,size,params,phase))`、`drawVisual(ctx, id, x, y, size, options?)` from `src/core/visuals.js`；Task 15A/15B 的 `scene.mine`、`scene.teslaBall`、`scene.helicopter` PNG manifest 与缓存；`PALETTE.neon`、`PALETTE.neonDim`、`PALETTE.gold`、`PALETTE.panel`、`PALETTE.obstacle`；`createTeslaBall/updateTeslaBall` 与 `createHelicopter/updateHelicopter` 的现有逻辑签名；Task 16 的 palette 化场景 render
+- Produces: `MINE_VISUAL_ID = 'scene.mine'`；`TESLA_BALL_VISUAL_ID = 'scene.teslaBall'`；`HELICOPTER_VISUAL_ID = 'scene.helicopter'`；`createTeslaBall(...)` 返回新增 `visualId: TESLA_BALL_VISUAL_ID`；`createHelicopter(...)` 返回新增 `visualId: HELICOPTER_VISUAL_ID`；`renderTeslaBall(ctx, ball, phase) → void`；`renderHelicopter(ctx, helicopter, phase = helicopter.t) → void`
 
-本任务不生成 PNG。地雷、特斯拉球和直升机全部由 `registerPart` 注册的程序化部件绘制；不新增 mine 伤害逻辑，不改变特斯拉球的 `tickT=0.25`、`life=2.5`、`r=12`、击退或回调，不改变直升机半径 60、降落 3s、登机 3s 和状态机返回值。`drawVisual` 的 `options` 使用 `{ params, phase }`，注册部件在局部原点绘制。
+本任务不生成 PNG 资产。地雷使用 `scene.mine` PNG 主体 + 程序化中心警示光与范围环覆盖层；特斯拉球使用 `scene.teslaBall` PNG 主体 + 青霓色程序化环绕电弧与周期闪电；直升机使用 `scene.helicopter` PNG 机身主体 + 按动画相位旋转的程序化旋翼与登机进度光环。所有逻辑数值、状态机、生命周期和交互规则保持不变：不新增 mine 伤害逻辑，不改变特斯拉球的 `tickT=0.25`、`life=2.5`、`r=12`、击退或回调，不改变直升机半径 60、降落 3s、登机 3s 和状态机返回值。PNG 未就绪或加载失败时，沿用现有内联几何绘制作为 fallback。`drawVisual` 的 `options` 使用 `{ params, phase }`，注册部件在局部原点绘制。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -5375,7 +5483,7 @@ import {
 import { drawVisual } from '../src/core/visuals.js';
 ```
 
-在现有 `T1` 常量后加入 fake Canvas 2D 上下文，并把第一个字段测试的期望对象增加 `visualId`：
+在现有 `T1` 常量后加入 fake Canvas 2D 上下文，并把第一个字段测试的期望对象增加 `visualId`。Node 测试不预加载真实场景 PNG，专门验证图片未就绪时的 fallback 几何与程序化动效层仍然绘制；浏览器联调再确认 `getLoadedImage` 命中时主体走 `drawImage`：
 
 ```js
 function fakeCtx() {
@@ -5384,6 +5492,7 @@ function fakeCtx() {
     strokeCount: 0,
     fillCount: 0,
     fillRectCount: 0,
+    drawImageCount: 0,
     save() {},
     restore() {},
     translate() {},
@@ -5398,6 +5507,7 @@ function fakeCtx() {
     stroke() { this.strokeCount++; },
     fillRect() { this.fillRectCount++; },
     strokeRect() { this.strokeCount++; },
+    drawImage() { this.drawImageCount++; },
   };
 }
 
@@ -5405,13 +5515,13 @@ test('createTeslaBall 字段齐全：r12 / tick 0.25 / life 2.5 / alive / visual
   const b = createTeslaBall(10, 20, 30, 40, 50);
   assert.deepEqual(b, {
     x: 10, y: 20, vx: 30, vy: 40, r: 12, damage: 50,
-    tickT: 0.25, life: 2.5, alive: true, visualId: 'teslaBall',
+    tickT: 0.25, life: 2.5, alive: true, visualId: 'scene.teslaBall',
   });
 });
 
-test('mine 与 teslaBall visual id 已注册，组合视觉绘制不发出未知 id 警告', () => {
-  assert.equal(MINE_VISUAL_ID, 'mine');
-  assert.equal(TESLA_BALL_VISUAL_ID, 'teslaBall');
+test('mine 与 teslaBall PNG visual id 已注册，图片未就绪时保留 fallback 与动效层', () => {
+  assert.equal(MINE_VISUAL_ID, 'scene.mine');
+  assert.equal(TESLA_BALL_VISUAL_ID, 'scene.teslaBall');
   const ctx = fakeCtx();
   const warnings = [];
   const originalWarn = console.warn;
@@ -5426,6 +5536,7 @@ test('mine 与 teslaBall visual id 已注册，组合视觉绘制不发出未知
     console.warn = originalWarn;
   }
   assert.equal(warnings.length, 0);
+  assert.equal(ctx.drawImageCount, 0);
   assert.ok(ctx.arcCount >= 3);
   assert.ok(ctx.strokeCount >= 2);
 });
@@ -5440,7 +5551,7 @@ import {
 } from '../src/entities/helicopter.js';
 ```
 
-在 import 后加入同样的 fake context（使用以下完整代码，避免任何 DOM 或真实图片依赖）：
+在 import 后加入同样的 fake context（使用以下完整代码，避免任何 DOM 或真实图片依赖；Node 路径验证 PNG 未就绪时的 fallback）:
 
 ```js
 function fakeCtx() {
@@ -5449,6 +5560,7 @@ function fakeCtx() {
     strokeCount: 0,
     fillCount: 0,
     fillRectCount: 0,
+    drawImageCount: 0,
     save() {},
     restore() {},
     translate() {},
@@ -5463,10 +5575,11 @@ function fakeCtx() {
     stroke() { this.strokeCount++; },
     fillRect() { this.fillRectCount++; },
     strokeRect() { this.strokeCount++; },
+    drawImage() { this.drawImageCount++; },
   };
 }
 
-test('直升机 visual id 已注册且组合视觉包含旋翼、机身、舷窗和登机光环', () => {
+test('直升机 PNG visual id 已注册且图片未就绪时保留旋翼、fallback 机身和登机光环', () => {
   const h = createHelicopter(0, 0);
   h.state = 'boarding';
   h.t = 1.5;
@@ -5479,9 +5592,10 @@ test('直升机 visual id 已注册且组合视觉包含旋翼、机身、舷窗
   } finally {
     console.warn = originalWarn;
   }
-  assert.equal(HELICOPTER_VISUAL_ID, 'helicopter');
+  assert.equal(HELICOPTER_VISUAL_ID, 'scene.helicopter');
   assert.equal(h.visualId, HELICOPTER_VISUAL_ID);
   assert.equal(warnings.length, 0);
+  assert.equal(ctx.drawImageCount, 0);
   assert.ok(ctx.arcCount >= 3);
   assert.ok(ctx.strokeCount >= 3);
   assert.ok(ctx.fillRectCount >= 2);
@@ -5496,32 +5610,36 @@ Expected: FAIL with `SyntaxError: The requested module '../src/entities/teslabal
 
 - [ ] **Step 3: 最小实现**
 
-将 `src/entities/teslaball.js` 改为以下实现。注册 `mine` 仅提供低矮底座、中心警示光和范围环，不创建或修改炸弹实体；特斯拉球的中心球、环绕电弧和周期闪电均由同一个注册部件绘制：
+将 `src/entities/teslaball.js` 改为以下实现。`scene.mine` 与 `scene.teslaBall` 仍通过 `registerPart` 进入统一视觉注册表；部件先查 `getLoadedImage`，命中时绘制 PNG 主体，再叠加程序化动效，未命中时只用现有内联几何作为 fallback。地雷只提供视觉，不创建或修改炸弹实体；特斯拉球的逻辑函数保持原样：
 
 ```js
-// 电磁球：磁电弹命中后生成，沿弹道方向慢速移动并对周围僵尸周期电击。纯逻辑模块，无 DOM 依赖。
 import { damageZombie } from './zombie.js';
-import { drawVisual, registerPart } from '../core/visuals.js';
+import { drawVisual, getLoadedImage, registerPart } from '../core/visuals.js';
 import { PALETTE } from '../config/palette.js';
 
 const TICK_INTERVAL = 0.25;
 const TICK_RADIUS = 30;
 const KNOCKBACK = 60;
-export const MINE_VISUAL_ID = 'mine';
-export const TESLA_BALL_VISUAL_ID = 'teslaBall';
+export const MINE_VISUAL_ID = 'scene.mine';
+export const TESLA_BALL_VISUAL_ID = 'scene.teslaBall';
 
 registerPart(MINE_VISUAL_ID, (ctx, size, params = {}, phase = 0) => {
   const r = size * 0.5;
   const range = params.range ?? r * 3;
+  const image = getLoadedImage(MINE_VISUAL_ID);
   ctx.save();
-  ctx.globalAlpha = 0.22;
-  ctx.fillStyle = PALETTE.hudPanel;
-  ctx.fillRect(-r * 0.62, -r * 0.20, r * 1.24, r * 0.40);
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = PALETTE.obstacle;
-  ctx.beginPath();
-  ctx.arc(0, r * 0.04, r * 0.46, 0, Math.PI * 2);
-  ctx.fill();
+  if (image) {
+    ctx.drawImage(image, -r, -r, r * 2, r * 2);
+  } else {
+    ctx.globalAlpha = 0.22;
+    ctx.fillStyle = PALETTE.hudPanel;
+    ctx.fillRect(-r * 0.62, -r * 0.20, r * 1.24, r * 0.40);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = PALETTE.obstacle;
+    ctx.beginPath();
+    ctx.arc(0, r * 0.04, r * 0.46, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.shadowColor = PALETTE.gold;
   ctx.shadowBlur = 8;
   ctx.fillStyle = PALETTE.gold;
@@ -5539,15 +5657,20 @@ registerPart(MINE_VISUAL_ID, (ctx, size, params = {}, phase = 0) => {
 
 registerPart(TESLA_BALL_VISUAL_ID, (ctx, size, params = {}, phase = 0) => {
   const r = params.radius ?? size * 0.5;
+  const image = getLoadedImage(TESLA_BALL_VISUAL_ID);
   ctx.save();
-  const coreRadius = r * (1 + 0.10 * Math.sin(phase * 18));
-  ctx.shadowColor = PALETTE.neon;
-  ctx.shadowBlur = 14;
-  ctx.globalAlpha = 0.85;
-  ctx.fillStyle = PALETTE.neon;
-  ctx.beginPath();
-  ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
-  ctx.fill();
+  if (image) {
+    ctx.drawImage(image, -r, -r, r * 2, r * 2);
+  } else {
+    const coreRadius = r * (1 + 0.10 * Math.sin(phase * 18));
+    ctx.shadowColor = PALETTE.neon;
+    ctx.shadowBlur = 14;
+    ctx.globalAlpha = 0.85;
+    ctx.fillStyle = PALETTE.neon;
+    ctx.beginPath();
+    ctx.arc(0, 0, coreRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.globalAlpha = 0.65;
   ctx.strokeStyle = PALETTE.neon;
   ctx.lineWidth = 2;
@@ -5613,21 +5736,52 @@ export function updateTeslaBall(b, zombies, dt, onHit, onKill) {
 }
 ```
 
-将 `src/entities/helicopter.js` 改为以下实现；`updateHelicopter` 的状态分支、距离比较和 3s 常量保持原样，`renderHelicopter` 只负责把状态参数交给注册部件：
+将 `src/entities/helicopter.js` 改为以下实现；`updateHelicopter` 的状态分支、距离比较和 3s 常量保持原样，`renderHelicopter` 只负责把状态参数交给注册部件。部件先绘制 `scene.helicopter` PNG 机身主体（旋翼区域保持透明），再叠加按动画相位旋转的程序化旋翼和登机进度光环；图片未就绪时，机身、尾部、舷窗和着陆架沿用现有内联几何 fallback：
 
 ```js
-// src/entities/helicopter.js —— 坚守模式救援直升机（降落/登机状态机）。纯逻辑模块，无 DOM 依赖。
-import { drawVisual, registerPart } from '../core/visuals.js';
+import { drawVisual, getLoadedImage, registerPart } from '../core/visuals.js';
 import { PALETTE } from '../config/palette.js';
 
 const LANDING_TIME = 3;
 const BOARDING_TIME = 3;
-export const HELICOPTER_VISUAL_ID = 'helicopter';
+export const HELICOPTER_VISUAL_ID = 'scene.helicopter';
 
 registerPart(HELICOPTER_VISUAL_ID, (ctx, size, params = {}, phase = 0) => {
   const r = size * 0.5;
   const progress = Math.max(0, Math.min(1, params.progress ?? 0));
+  const image = getLoadedImage(HELICOPTER_VISUAL_ID);
   ctx.save();
+
+  if (image) {
+    ctx.drawImage(image, -r, -r, r * 2, r * 2);
+  } else {
+    ctx.fillStyle = PALETTE.neonDim;
+    ctx.fillRect(-r * 0.92, -r * 0.13, r * 0.50, r * 0.26);
+    ctx.fillStyle = PALETTE.panel;
+    ctx.shadowColor = PALETTE.neon;
+    ctx.shadowBlur = 9;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.58, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = PALETTE.neon;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = PALETTE.neon;
+    ctx.beginPath();
+    ctx.arc(r * 0.18, -r * 0.04, r * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = PALETTE.obstacle;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.30, r * 0.48);
+    ctx.lineTo(-r * 0.46, r * 0.76);
+    ctx.moveTo(r * 0.30, r * 0.48);
+    ctx.lineTo(r * 0.46, r * 0.76);
+    ctx.stroke();
+  }
 
   ctx.save();
   ctx.rotate(phase * 5);
@@ -5637,33 +5791,6 @@ registerPart(HELICOPTER_VISUAL_ID, (ctx, size, params = {}, phase = 0) => {
   ctx.lineWidth = 2;
   ctx.strokeRect(-r * 1.42, -r * 0.06, r * 2.84, r * 0.12);
   ctx.restore();
-
-  ctx.fillStyle = PALETTE.neonDim;
-  ctx.fillRect(-r * 0.92, -r * 0.13, r * 0.50, r * 0.26);
-  ctx.fillStyle = PALETTE.panel;
-  ctx.shadowColor = PALETTE.neon;
-  ctx.shadowBlur = 9;
-  ctx.beginPath();
-  ctx.arc(0, 0, r * 0.58, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = PALETTE.neon;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  ctx.fillStyle = PALETTE.neon;
-  ctx.beginPath();
-  ctx.arc(r * 0.18, -r * 0.04, r * 0.22, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.strokeStyle = PALETTE.obstacle;
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(-r * 0.30, r * 0.48);
-  ctx.lineTo(-r * 0.46, r * 0.76);
-  ctx.moveTo(r * 0.30, r * 0.48);
-  ctx.lineTo(r * 0.46, r * 0.76);
-  ctx.stroke();
 
   if (params.state === 'boarding') {
     ctx.globalAlpha = 0.9;
@@ -5734,7 +5861,7 @@ Expected: PASS（15 个用例；特斯拉球字段、0.25s 电击周期、2.5s �
 
 Run: `npm test`
 
-Expected: PASS。随后用 webbridge 截图并实景核对：地雷视觉注册后可被 `drawVisual(ctx, 'mine', ...)` 使用且未知 id 警告数为 0；特斯拉球显示青霓中心球、环绕电弧和周期闪电；直升机显示机身、旋翼、尾部、舷窗和登机进度光环；场景行为仍保持 2.5s、3s/3s 和半径 60 的原有口径。
+Expected: PASS。随后用 webbridge 截图并实景核对：地雷视觉注册后可被 `drawVisual(ctx, 'scene.mine', ...)` 使用且未知 id 警告数为 0；图片就绪时三实体均显示 PNG 主体，地雷叠加中心警示光与范围环，特斯拉球叠加青霓环绕电弧和周期闪电，直升机叠加旋翼和登机进度光环；图片未就绪时对应现有内联几何 fallback 仍可用；场景行为仍保持 2.5s、3s/3s 和半径 60 的原有口径。
 
 - [ ] **Step 5: 提交**
 
@@ -8605,7 +8732,7 @@ const RECORD = new URL('../docs/superpowers/acceptance-2026-09-02-ui-visual-over
 const REQUIRED_VISUAL_CHECKS = [
   'canvasFullSmall', 'canvasFullWide', 'canvasFullHighDpr', 'hudAnchors',
   'iconsAllRequiredScreens', 'transparentNoBlackEdge', 'tooltipCoverage',
-  'auxEnhancementLockedRow', 'proceduralEntityVisuals', 'bestiarySharesMonsterVisual',
+  'auxEnhancementLockedRow', 'sceneSpriteRenderingWithFallback', 'bestiarySharesMonsterVisual',
   'skinFlowAndFallback', 'paletteTokens', 'terrainTileCached', 'dprCapped',
   'drawImageControlled',
 ];
@@ -8652,6 +8779,8 @@ test('package-8：三视口截图、5 秒性能红线和 8 个任务包核对表
     assert.equal(record.checklist.visual[key], true, `实景核对项 ${key} 未通过`);
 });
 ```
+
+其中 `sceneSpriteRenderingWithFallback` 的验收口径为 PNG 精灵渲染(含 fallback 路径)；不再以场内场景物件的程序化建模作为通过条件。
 
 **Step 2: 运行确认失败**
 
@@ -8781,7 +8910,7 @@ if (record.checklist.taskPackages.length !== 8 || record.checklist.taskPackages.
 const required = [
   'canvasFullSmall', 'canvasFullWide', 'canvasFullHighDpr', 'hudAnchors',
   'iconsAllRequiredScreens', 'transparentNoBlackEdge', 'tooltipCoverage',
-  'auxEnhancementLockedRow', 'proceduralEntityVisuals', 'bestiarySharesMonsterVisual',
+  'auxEnhancementLockedRow', 'sceneSpriteRenderingWithFallback', 'bestiarySharesMonsterVisual',
   'skinFlowAndFallback', 'paletteTokens', 'terrainTileCached', 'dprCapped',
   'drawImageControlled',
 ];
