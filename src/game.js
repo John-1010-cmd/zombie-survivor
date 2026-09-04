@@ -18,7 +18,7 @@ import { catalogFor, buy } from './systems/shop.js';
 import { createAux, spawnAuxBodies, updateAuxBodies } from './entities/companions.js';
 import { createTurret, updateTurret, TURRET_VISUAL_ID } from './entities/turret.js';
 import { createTeslaBall, updateTeslaBall } from './entities/teslaball.js';
-import { createWallSegment } from './entities/wall.js';
+import { createWallSegment, WALL_VISUAL_ID } from './entities/wall.js';
 import { drawVisual } from './core/visuals.js';
 import { ITEMS } from './config/items.js';
 import { MODES, TIER_DURATION, MAX_ZOMBIES } from './config/difficulty.js';
@@ -631,19 +631,15 @@ export function createGameScene(deps) {
       ctx.fill();
     }
 
-    // 围墙：石灰色段圆 + 耐久弧
+    // 围墙：模块化石墙段，耐久档位由 visual 根据 hp/maxHp 决定
     for (const seg of scene.walls) {
-      ctx.fillStyle = '#8a8a92';
-      ctx.beginPath();
-      ctx.arc(seg.x, seg.y, seg.r, 0, Math.PI * 2);
-      ctx.fill();
-      if (seg.hp < seg.maxHp) {
-        ctx.strokeStyle = '#5eff8a';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(seg.x, seg.y, seg.r + 4, -Math.PI / 2, -Math.PI / 2 + (seg.hp / seg.maxHp) * Math.PI * 2);
-        ctx.stroke();
-      }
+      drawVisual(ctx, WALL_VISUAL_ID, seg.x, seg.y, seg.r, {
+        params: {
+          hp: seg.hp,
+          maxHp: seg.maxHp,
+        },
+        phase: scene.time,
+      });
     }
 
     // 固定火炮：组合式程序化 visual，炮口闪光由 spawnProjectile 的现有效果管线负责
