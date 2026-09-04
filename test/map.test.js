@@ -8,8 +8,11 @@ import {
   ROCK_VARIANT_COUNT, RECT_VARIANT_COUNT, obstacleVisualId, obstacleSpriteId,
   renderObstacle, renderShop,
   SHOP_INTERACT_R, shopPulseState, SUPPLY_STATION_VISUAL_ID, SHOP_LABEL,
+  TERRAIN_TILE_SIZE, createTerrainRenderer,
 } from '../src/systems/map.js';
 import { clearCaches, registerImage, preloadVisuals } from '../src/core/visuals.js';
+import { PALETTE } from '../src/config/palette.js';
+import { createGameScene } from '../src/game.js';
 
 const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
 const SHOP_R = 46;
@@ -309,4 +312,137 @@ test('图像就绪时进入混合渲染贴图路径：精确断言到达 drawIma
     if (originalImage === undefined) delete globalThis.Image;
     else globalThis.Image = originalImage;
   }
+});
+
+function fakeTileFactory(counter) {
+  return size => {
+    counter.count++;
+    const tileCtx = {
+      fillStyle: '',
+      globalAlpha: 1,
+      fillRect() { counter.fillRectCount++; },
+      drawImage(source, ...args) { counter.textureDraws.push({ source, args }); },
+    };
+    return {
+      width: size,
+      height: size,
+      getContext: () => tileCtx,
+    };
+  };
+}
+
+const TERRAIN_PALETTE = {
+  ground: '#101810',
+  obstacle: '#303840',
+  neon: '#5eff8a',
+  neonDim: '#2a4a3a',
+};
+
+test('地形 tile 在初始化后只生成一次，draw 按可见范围平铺缓存合成 tile 且不逐帧重建', () => {
+  assert.equal(TERRAIN_TILE_SIZE, 128);
+  const counter = { count: 0, fillRectCount: 0, textureDraws: [] };
+  const cachedTexture = { id: 'scene.terrain.grass' };
+  const renderer = createTerrainRenderer({
+    palette: TERRAIN_PALETTE,
+    canvasFactory: fakeTileFactory(counter),
+    imageLoader: id => id === 'scene.terrain.grass' ? cachedTexture : null,
+  });
+  const target = {
+    drawImageSources: [],
+    drawImage(source, ...args) { this.drawImageSources.push({ source, args }); },
+  };
+  const viewport = { x: 0, y: 0, width: 256, height: 128 };
+  renderer.draw(target, viewport);
+  renderer.draw(target, viewport);
+  assert.equal(counter.count, 1);
+  assert.equal(renderer.getBuildCount(), 1);
+  assert.equal(target.drawImageSources.length, 4);
+  assert.equal(counter.textureDraws.length, 1);
+  assert.equal(counter.textureDraws[0].source, cachedTexture);
+  assert.deepEqual(counter.textureDraws[0].args, [0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE]);
+  assert.ok(target.drawImageSources.every(item => item.source === renderer.getTile()));
+  assert.equal(renderer.getTile().width, TERRAIN_TILE_SIZE);
+});
+
+test('地形 palette 变化只触发一次重建，连续 draw 不重复生成', () => {
+  const counter = { count: 0, fillRectCount: 0, textureDraws: [] };
+  const cachedTexture = { id: 'scene.terrain.grass' };
+  const palette = { ...TERRAIN_PALETTE };
+  const renderer = createTerrainRenderer({
+    palette,
+    canvasFactory: fakeTileFactory(counter),
+    imageLoader: () => cachedTexture,
+  });
+  const target = { drawImage() {} };
+  const viewport = { x: 64, y: 64, width: 64, height: 64 };
+  renderer.draw(target, viewport);
+  palette.ground = '#182018';
+  renderer.draw(target, viewport);
+  renderer.draw(target, viewport);
+  assert.equal(counter.count, 2);
+  assert.equal(counter.textureDraws.length, 2);
+  assert.equal(renderer.getBuildCount(), 2);
+  renderer.invalidate();
+  renderer.draw(target, viewport);
+  assert.equal(counter.count, 3);
+  assert.equal(counter.textureDraws.length, 3);
+});
+
+test('地形图片未就绪时回退到纯色基底，不尝试绘制未缓存纹理', () => {
+  const counter = { count: 0, fillRectCount: 0, textureDraws: [] };
+  const renderer = createTerrainRenderer({
+    palette: TERRAIN_PALETTE,
+    canvasFactory: fakeTileFactory(counter),
+    imageLoader: () => null,
+  });
+  renderer.draw({ drawImage() {} }, { x: 0, y: 0, width: 64, height: 64 });
+  assert.equal(counter.count, 1);
+  assert.equal(counter.textureDraws.length, 0);
+  assert.ok(counter.fillRectCount >= 1);
+});
+
+test('场景渲染使用 PALETTE.boundary 与 PALETTE.neon 绘制霓虹边界且线宽为 6', () => {
+  const strokeRectCalls = [];
+  const mockCtx = {
+    save() {},
+    restore() {},
+    translate() {},
+    fillRect() {},
+    strokeRect(...args) {
+      strokeRectCalls.push({
+        args,
+        strokeStyle: this.strokeStyle,
+        lineWidth: this.lineWidth,
+        shadowColor: this.shadowColor,
+        shadowBlur: this.shadowBlur,
+      });
+    },
+    beginPath() {},
+    arc() {},
+    fill() {},
+    stroke() {},
+    moveTo() {},
+    lineTo() {},
+    closePath() {},
+    setLineDash() {},
+    fillText() {},
+  };
+  const scene = createGameScene({
+    canvas: { width: 800, height: 600, getContext: () => null },
+    input: { state: {} },
+    mode: 'endless',
+    audio: null,
+    settings: {},
+    meta: null,
+    onGameOver: () => {},
+  });
+  scene.render(mockCtx);
+  const boundaryCall = strokeRectCalls.find(c =>
+    c.args[0] === 0 && c.args[1] === 0 && c.args[2] === MAP_SIZE && c.args[3] === MAP_SIZE,
+  );
+  assert.ok(boundaryCall, '必须有边界 strokeRect 调用');
+  assert.equal(boundaryCall.strokeStyle, PALETTE.boundary);
+  assert.equal(boundaryCall.shadowColor, PALETTE.neon);
+  assert.equal(boundaryCall.shadowBlur, 10);
+  assert.equal(boundaryCall.lineWidth, 6);
 });

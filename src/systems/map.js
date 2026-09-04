@@ -309,3 +309,91 @@ export function renderShop(ctx, shop, player, timeSec) {
   }
   ctx.restore();
 }
+
+export const TERRAIN_TILE_SIZE = 128;
+
+function defaultCanvasFactory(size) {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  return canvas;
+}
+
+function terrainPaletteKey(palette) {
+  return String(palette.ground) + '|' + String(palette.obstacle) + '|' +
+    String(palette.neon) + '|' + String(palette.neonDim);
+}
+
+export function createTerrainTile(
+  palette = PALETTE,
+  canvasFactory = defaultCanvasFactory,
+  imageLoader = getLoadedImage,
+) {
+  const canvas = canvasFactory(TERRAIN_TILE_SIZE);
+  if (!canvas || typeof canvas.getContext !== 'function') return null;
+  canvas.width = TERRAIN_TILE_SIZE;
+  canvas.height = TERRAIN_TILE_SIZE;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const source = typeof imageLoader === 'function'
+    ? imageLoader('scene.terrain.grass')
+    : null;
+  if (source && typeof ctx.drawImage === 'function') {
+    ctx.drawImage(source, 0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = palette.ground;
+    ctx.fillRect(0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
+  } else {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = palette.ground;
+    ctx.fillRect(0, 0, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
+  }
+  ctx.globalAlpha = 1;
+  return canvas;
+}
+
+export function createTerrainRenderer({
+  palette = PALETTE,
+  canvasFactory = defaultCanvasFactory,
+  imageLoader = getLoadedImage,
+} = {}) {
+  let tile = null;
+  let builtKey = null;
+  let buildCount = 0;
+
+  function ensureTile() {
+    const key = terrainPaletteKey(palette);
+    if (key !== builtKey) {
+      tile = createTerrainTile(palette, canvasFactory, imageLoader);
+      builtKey = key;
+      buildCount++;
+    }
+    return tile;
+  }
+
+  function draw(ctx, viewport) {
+    const current = ensureTile();
+    if (!current || !ctx || typeof ctx.drawImage !== 'function') return;
+    const x0 = Math.floor(viewport.x / TERRAIN_TILE_SIZE) * TERRAIN_TILE_SIZE;
+    const y0 = Math.floor(viewport.y / TERRAIN_TILE_SIZE) * TERRAIN_TILE_SIZE;
+    const x1 = viewport.x + viewport.width;
+    const y1 = viewport.y + viewport.height;
+    for (let x = x0; x < x1; x += TERRAIN_TILE_SIZE) {
+      for (let y = y0; y < y1; y += TERRAIN_TILE_SIZE)
+        ctx.drawImage(current, x, y, TERRAIN_TILE_SIZE, TERRAIN_TILE_SIZE);
+    }
+  }
+
+  function invalidate() {
+    tile = null;
+    builtKey = null;
+  }
+
+  return {
+    draw,
+    getTile: ensureTile,
+    getBuildCount: () => buildCount,
+    invalidate,
+  };
+}

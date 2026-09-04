@@ -4,7 +4,8 @@ import { mulberry32 } from './core/rng.js';
 import { createPool } from './core/pool.js';
 import { circleHit, createSpatialHash } from './core/physics.js';
 import { createCamera, updateCamera, addShake } from './core/camera.js';
-import { generateMap, MAP_SIZE, renderObstacle, renderShop } from './systems/map.js';
+import { generateMap, MAP_SIZE, renderObstacle, renderShop, createTerrainRenderer } from './systems/map.js';
+import { PALETTE } from './config/palette.js';
 import { createPlayer, updatePlayer, damagePlayer } from './entities/player.js';
 import { createZombie, updateZombie } from './entities/zombie.js';
 import { createWeapon, updateWeapon, weaponStats } from './entities/weapon.js';
@@ -71,6 +72,8 @@ export function createGameScene(deps) {
 
   const rng = mulberry32((Math.random() * 2 ** 31) | 0);
   const map = generateMap(rng);
+  const terrain = createTerrainRenderer({ palette: PALETTE });
+  terrain.getTile();
   const player = createPlayer(map.spawn.x, map.spawn.y);
   const viewport = {
     width: Math.max(1, initialViewport?.width ?? canvas.clientWidth ?? canvas.width ?? 1),
@@ -110,6 +113,7 @@ export function createGameScene(deps) {
   const scene = {
     update,
     render,
+    terrain,
     viewport,
     setViewport,
     paused: false,
@@ -211,7 +215,7 @@ export function createGameScene(deps) {
     if (scene.particles.length < MAX_PARTICLES) { // 粒子达上限时枪口闪光整体跳过
       const mx = player.x + Math.cos(opts.angle) * player.r;
       const my = player.y + Math.sin(opts.angle) * player.r;
-      spawnParticles(particlePool, scene.particles, mx, my, opts.visual?.color ?? '#ffe066', 2, rng);
+      spawnParticles(particlePool, scene.particles, mx, my, opts.visual?.color ?? PALETTE.gold, 2, rng);
     }
     spawnProjectile({ ...opts, fromPlayer: true });
   }
@@ -243,7 +247,7 @@ export function createGameScene(deps) {
       if (rng() < d.chance) { addItem(scene.inventory, d.id, 1); break; }
     }
     if (scene.particles.length < MAX_PARTICLES)
-      spawnParticles(particlePool, scene.particles, z.x, z.y, '#5eff8a', 12, rng);
+      spawnParticles(particlePool, scene.particles, z.x, z.y, PALETTE.neon, 12, rng);
     if (z.behavior) BEHAVIORS[z.behavior]?.onDeath?.(z, behaviorCtx()); // 行为死亡钩子（自爆 AoE 在此结算）
   }
 
@@ -251,10 +255,10 @@ export function createGameScene(deps) {
     // 命中粒子喷溅（visual.hitParticles 驱动）：放在 damageNumbers 早退之前——设置项只守护 floater；
     // 守卫只拦 spawnParticles，不影响后续 floater 逻辑
     if (visual?.hitParticles && scene.particles.length < MAX_PARTICLES)
-      spawnParticles(particlePool, scene.particles, z.x, z.y, visual.color ?? '#ffe066', visual.hitParticles, rng);
+      spawnParticles(particlePool, scene.particles, z.x, z.y, visual.color ?? PALETTE.gold, visual.hitParticles, rng);
     if (settings && !settings.damageNumbers) return;
     if (scene.floaters.length < MAX_FLOATERS)
-      spawnFloater(scene.floaters, z.x, z.y - 20, String(Math.round(dmg)), '#ffd75e');
+      spawnFloater(scene.floaters, z.x, z.y - 20, String(Math.round(dmg)), PALETTE.gold);
   }
 
   function shake(mag) {
@@ -278,48 +282,48 @@ export function createGameScene(deps) {
     if (!id) return;
     if (id === 'turret') {
       if (scene.turrets.length >= MAX_TURRETS) {
-        spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮已达上限（30）', '#f88');
+        spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮已达上限（30）', PALETTE.text);
         sound('click'); return;
       }
       if (!useItem(scene.inventory, id)) { sound('click'); return; }
       scene.turrets.push(createTurret(player.x, player.y, scene.turretEnhance));
-      spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮部署！', '#f80');
+      spawnFloater(scene.floaters, player.x, player.y - 30, '固定火炮部署！', PALETTE.gold);
       return;
     }
     if (id === 'wall') {
       // 围墙无上限（迭代 08）
       if (!useItem(scene.inventory, id)) { sound('click'); return; }
       scene.walls.push(createWallSegment(player.x, player.y, scene.wallEnhance));
-      spawnFloater(scene.floaters, player.x, player.y - 30, '围墙竖起！', '#99a');
+      spawnFloater(scene.floaters, player.x, player.y - 30, '围墙竖起！', PALETTE.textDim);
       return;
     }
     if (!useItem(scene.inventory, id)) { sound('click'); return; }
     if (id === 'medkit') {
       player.hp = Math.min(player.maxHp, player.hp + player.maxHp * 0.5);
-      spawnFloater(scene.floaters, player.x, player.y - 30, '+' + Math.round(player.maxHp * 0.5), '#4d4');
+      spawnFloater(scene.floaters, player.x, player.y - 30, '+' + Math.round(player.maxHp * 0.5), PALETTE.neon);
     } else if (id === 'magnet') {
       magnetAllUntil = scene.time + 2.5;
-      spawnFloater(scene.floaters, player.x, player.y - 30, '磁铁！', '#5ef');
+      spawnFloater(scene.floaters, player.x, player.y - 30, '磁铁！', PALETTE.neon);
     } else if (id === 'bomb') {
       explode(player.x, player.y, 350, 250, scene.zombies, z => hitZombie(z, 250), killZombie);
       fxExplosion(player.x, player.y, 350);
       shake(10);
       sound('explosion');
-      spawnFloater(scene.floaters, player.x, player.y - 30, '轰！', '#f80');
+      spawnFloater(scene.floaters, player.x, player.y - 30, '轰！', PALETTE.gold);
     }
   }
 
   // 开发者模式（迭代 04）：加银币 / 放置指定僵尸（玩家东侧 200px，当前档倍率）
   function devAddCoins(n) {
     scene.coins += n;
-    spawnFloater(scene.floaters, player.x, player.y - 30, '+' + n + ' 银币（开发者）', '#ffd75e');
+    spawnFloater(scene.floaters, player.x, player.y - 30, '+' + n + ' 银币（开发者）', PALETTE.gold);
   }
 
   function devSpawnZombie(type) {
     const cfg = cfgFn(scene.time);
     scene.zombies.push(createZombie(type, player.x + 200, player.y, { ...scalingCtx, tier: cfg.tier, timeSec: scene.time }));
     aliveCount++;
-    spawnFloater(scene.floaters, player.x + 200, player.y - 30, '已放置 ' + MONSTERS[type].name, '#f55');
+    spawnFloater(scene.floaters, player.x + 200, player.y - 30, '已放置 ' + MONSTERS[type].name, PALETTE.text);
   }
 
   // 性能压测（dev 菜单）：填满 400 怪 + 满强化机枪（自动开火近似维持约 400 活跃弹道）。手动验收，不进单测。
@@ -332,7 +336,7 @@ export function createGameScene(deps) {
       scene.zombies.push(createZombie('normal', p.x, p.y, { ...scalingCtx, tier: cfg.tier, timeSec: scene.time }));
       aliveCount++;
     }
-    spawnFloater(scene.floaters, player.x, player.y - 40, '压测中：400 怪 + 满强化机枪', '#f55');
+    spawnFloater(scene.floaters, player.x, player.y - 40, '压测中：400 怪 + 满强化机枪', PALETTE.text);
   }
 
   function togglePause() {
@@ -377,7 +381,7 @@ export function createGameScene(deps) {
     const cfg = cfgFn(scene.time);
     scene.time = cfg.tier * segLen;
     scene.coins += bonus;
-    spawnFloater(scene.floaters, player.x, player.y - 40, '提前进入下一档！+' + bonus + ' 银币', '#ffd75e');
+    spawnFloater(scene.floaters, player.x, player.y - 40, '提前进入下一档！+' + bonus + ' 银币', PALETTE.gold);
   }
 
   // 冒险主动退出按失败结算（设计 §3.1）：供 main.js onQuit 分流调用
@@ -413,7 +417,7 @@ export function createGameScene(deps) {
       aliveCount++;
       sound('alarm');
       shake(8);
-      spawnFloater(scene.floaters, player.x, player.y - 50, '守门 Boss 出现！', '#f55');
+      spawnFloater(scene.floaters, player.x, player.y - 50, '守门 Boss 出现！', PALETTE.text);
     }
 
     if (!isAdventure && modeCfg.duration) {
@@ -421,12 +425,12 @@ export function createGameScene(deps) {
       if (!rescueAlerted && remain <= 60 && remain > 0) {
         rescueAlerted = true;
         sound('alarm');
-        spawnFloater(scene.floaters, player.x, player.y - 50, '救援即将抵达，前往撤离点（地图中心）！', '#ffd75e');
+        spawnFloater(scene.floaters, player.x, player.y - 50, '救援即将抵达，前往撤离点（地图中心）！', PALETTE.gold);
       }
       if (!scene.helicopter && scene.time >= modeCfg.duration) {
         scene.helicopter = createHelicopter(MAP_SIZE / 2, MAP_SIZE / 2);
         sound('heli');
-        spawnFloater(scene.floaters, player.x, player.y - 50, '直升机已降落！', '#5ef');
+        spawnFloater(scene.floaters, player.x, player.y - 50, '直升机已降落！', PALETTE.neon);
       }
     }
 
@@ -551,18 +555,27 @@ export function createGameScene(deps) {
     updateEffects(scene.effects, dt);
   }
 
-  function render(ctx, renderViewport = viewport) {
-    const W = renderViewport.width;
-    const H = renderViewport.height;
-    ctx.fillStyle = '#1a2418';
-    ctx.fillRect(0, 0, W, H);
+  function render(ctx) {
+    const viewport = {
+      x: camera.x,
+      y: camera.y,
+      width: camera.viewW,
+      height: camera.viewH,
+    };
+    ctx.fillStyle = PALETTE.ground;
+    ctx.fillRect(0, 0, viewport.width, viewport.height);
 
     ctx.save();
     ctx.translate(-camera.x + camera.offX, -camera.y + camera.offY);
+    terrain.draw(ctx, viewport);
 
-    ctx.strokeStyle = '#4a4a52';
+    ctx.save();
+    ctx.strokeStyle = PALETTE.boundary;
+    ctx.shadowColor = PALETTE.neon;
+    ctx.shadowBlur = 10;
     ctx.lineWidth = 6;
     ctx.strokeRect(0, 0, MAP_SIZE, MAP_SIZE);
+    ctx.restore();
 
     for (const o of map.obstacles) renderObstacle(ctx, o);
 
@@ -570,27 +583,33 @@ export function createGameScene(deps) {
 
     // 撤离点提示
     if (!isAdventure && modeCfg.duration && rescueAlerted && !scene.helicopter) {
-      ctx.strokeStyle = 'rgba(94,239,255,.5)';
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = PALETTE.neon;
       ctx.lineWidth = 3;
       ctx.setLineDash([12, 10]);
       ctx.beginPath();
       ctx.arc(MAP_SIZE / 2, MAP_SIZE / 2, 60, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.restore();
     }
 
     // 玩家脚下射程圈（反馈 #5：让攻击范围可感知）
     const range = weaponStats(scene.weapon).range;
-    ctx.fillStyle = 'rgba(255,224,102,.05)';
+    ctx.save();
+    ctx.globalAlpha = 0.05;
+    ctx.fillStyle = PALETTE.gold;
     ctx.beginPath();
     ctx.arc(player.x, player.y, range, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,224,102,.15)';
+    ctx.globalAlpha = 0.15;
+    ctx.strokeStyle = PALETTE.gold;
     ctx.lineWidth = 1.5;
     ctx.stroke();
+    ctx.restore();
 
     // 银币
-    ctx.fillStyle = '#ffd75e';
+    ctx.fillStyle = PALETTE.gold;
     for (const c of scene.coinsOnGround) {
       const s = 3 + Math.min(c.value, 5);
       ctx.beginPath();
@@ -639,16 +658,16 @@ export function createGameScene(deps) {
       });
     }
 
-    if (scene.helicopter) renderHelicopter(ctx, scene.helicopter);
+    if (scene.helicopter) renderHelicopter(ctx, scene.helicopter, scene.time);
 
     // 玩家
     if (player.invuln > 0) ctx.globalAlpha = 0.45 + 0.35 * Math.sin(scene.time * 24);
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = PALETTE.text;
     ctx.beginPath();
     ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = '#fff';
+    ctx.strokeStyle = PALETTE.text;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(player.x, player.y);
@@ -660,15 +679,19 @@ export function createGameScene(deps) {
 
     // 电磁球（迭代 05）：青色电球 + 电弧
     for (const b of scene.teslaBalls) {
-      ctx.fillStyle = 'rgba(94,239,255,.75)';
+      ctx.save();
+      ctx.globalAlpha = 0.75;
+      ctx.fillStyle = PALETTE.neon;
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = 'rgba(94,239,255,.5)';
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = PALETTE.neon;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.r + 5 + Math.sin(scene.time * 20) * 2, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.restore();
     }
 
     renderParticles(ctx, scene.particles);
@@ -680,20 +703,19 @@ export function createGameScene(deps) {
 
     // 档位来袭横幅（迭代 06）：顶部居中，缓慢闪烁 3s（自然跨档/提前难度触发）
     if (scene.banner && scene.time < scene.banner.until) {
-      const t = 1 - (scene.banner.until - scene.time) / 3; // 0→1 进度
       const alpha = 0.45 + 0.35 * Math.sin(scene.time * 8); // 缓慢闪烁
       ctx.globalAlpha = Math.max(0.15, Math.min(1, alpha));
-      ctx.fillStyle = 'rgba(0,0,0,.55)';
-      ctx.fillRect(W / 2 - 220, 60, 440, 56);
-      ctx.fillStyle = '#ffd75e';
+      ctx.fillStyle = PALETTE.hudPanel;
+      ctx.fillRect(viewport.width / 2 - 220, 60, 440, 56);
+      ctx.fillStyle = PALETTE.gold;
       ctx.font = '34px "Microsoft YaHei", sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(scene.banner.text, W / 2, 99);
+      ctx.fillText(scene.banner.text, viewport.width / 2, 99);
       ctx.textAlign = 'left';
       ctx.globalAlpha = 1;
     }
 
-    renderHud(ctx, scene, renderViewport);
+    renderHud(ctx, scene, viewport);
   }
 
   return scene;
