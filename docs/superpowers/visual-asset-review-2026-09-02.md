@@ -38,3 +38,37 @@
 
 - pistol 基准复核：[`asset-staging/reviews/weapon-pistol-sample.md`](../../.superpowers/sdd/2026-09-02-ui-visual-overhaul/asset-staging/reviews/weapon-pistol-sample.md)，v2 结论为四项通过，无需 v3。
 - 生成与验收 prompt 的留档来源为 `.superpowers/sdd/2026-09-02-ui-visual-overhaul/asset-staging/` 内的出图记录；本文件只登记运行时成品与验收结论，不复制 prompt 原文。
+
+---
+
+# 场景物件资产审美验收记录 (Task 15A)
+
+## 统一生产约束与验收规范
+
+- Prompt 模板与出处：`promptVersion=neon-cel-scene-v1`，存档出处为 [`asset-staging/scene/prompts-v1.md`](../../asset-staging/scene/prompts-v1.md)。
+- 成品目录：`assets/img/scene/`（含 `obstacles/` 与 `terrain/` 子目录）。
+- 生产规格：障碍物与建筑物为 256×256 RGBA PNG（地雷、特斯拉球为 128×128 RGBA PNG；草地地表为 256×256 全画幅不透明 PNG）。
+- 抠图工艺：采用 `finalize-icon.cjs` 边缘自适应色彩采样 + BFS 洪泛背景剥离 + 软 alpha 边缘渐变 + 预乘降采样。全画幅草地特例采用纯 box 均值降采样（不抠图保持全不透明）。
+- 像素与透明度验证：
+  - 物件类（11 张）：均具有真 alpha 分布（四角像素 alpha 均为 0，内部主体边缘平滑过渡至 alpha=255，不存在白边/黑边杂色）。
+  - 重点专项（`vehicle-0`）：车窗破碎区内部座舱、方向盘及发动机舱机械暗区保留完整，经程序与视觉重点验证，minAlpha=255，零误抠穿孔。
+  - 地表类（1 张 `grass-tile`）：保持 256×256 全不透明（alpha=65536/65536）。
+- k3 审美结论：12 张资产全数验收通过（v1 阶段 8 张一轮 PASS；`vehicle-0`、`vehicle-1`、`helicopter`、`tesla-ball` 4 张经 v2 迭代重出后 PASS）。
+
+## 逐项登记
+
+| 成品路径 | manifest ID | size | promptVersion | 风格一致性 | 透明底完整性 | 缩小辨识度 | 霓绿/金令牌融合 | k3 审美与定稿结论 |
+|---|---|---:|---|---|---|---|---|---|
+| `assets/img/scene/obstacles/rock-0.png` | `scene.obstacle.rock.0` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | v1 一轮 PASS，尖锐棱角清晰 |
+| `assets/img/scene/obstacles/rock-1.png` | `scene.obstacle.rock.1` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | v1 一轮 PASS，圆润厚重体量感强 |
+| `assets/img/scene/obstacles/rock-2.png` | `scene.obstacle.rock.2` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | v1 一轮 PASS，扁平层状石块分明 |
+| `assets/img/scene/obstacles/vehicle-0.png` | `scene.obstacle.vehicle.0` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | 是：v1→v2 迭代后 PASS (正俯视残骸，破碎车窗与机舱无误抠穿孔) |
+| `assets/img/scene/obstacles/vehicle-1.png` | `scene.obstacle.vehicle.1` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | 是：v1→v2 迭代后 PASS (正俯视皮卡，后货斗与压扁座舱清晰) |
+| `assets/img/scene/obstacles/concrete-0.png` | `scene.obstacle.concrete.0` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | v1 一轮 PASS，泽西路障警示线分明 |
+| `assets/img/scene/obstacles/concrete-1.png` | `scene.obstacle.concrete.1` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | v1 一轮 PASS，立方掩体与钢筋骨架扎实 |
+| `assets/img/scene/supply-station.png` | `scene.supplyStation` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | v1 一轮 PASS，战术棚屋与天线柜台细节完整 |
+| `assets/img/scene/mine.png` | `scene.mine` | 128 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | v1 一轮 PASS，圆形地雷与引信轮廓利落 |
+| `assets/img/scene/tesla-ball.png` | `scene.teslaBall` | 128 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | 是：v1→v2 迭代后 PASS (云台环空隙透出背景，霓绿#5eff8a发光节点纯正) |
+| `assets/img/scene/helicopter.png` | `scene.helicopter` | 256 | `neon-cel-scene-v1` | 通过 | 通过 (真 alpha) | 通过 | 通过 | 是：v1→v2 迭代后 PASS (正俯视机头朝上，省去旋翼叶片留轴套) |
+| `assets/img/scene/terrain/grass-tile.png` | `scene.terrain.grass` | 256 | `neon-cel-scene-v1` | 通过 | 特例 (全幅不透明) | 通过 | 通过 | v1 一轮 PASS，无缝平铺暗色草地纹理降采样保持全不透明 |
+
