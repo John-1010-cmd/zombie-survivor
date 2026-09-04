@@ -15,7 +15,7 @@ import { createCoin, updateCoin } from './entities/coin.js';
 import { createHelicopter, updateHelicopter, renderHelicopter } from './entities/helicopter.js';
 import { createInventory, addItem, useItem } from './systems/inventory.js';
 import { catalogFor, buy } from './systems/shop.js';
-import { createAux, spawnAuxBodies, updateAuxBodies } from './entities/companions.js';
+import { createAux, spawnAuxBodies, updateAuxBodies, AUX_CONFIG } from './entities/companions.js';
 import { createTurret, updateTurret, TURRET_VISUAL_ID } from './entities/turret.js';
 import { createTeslaBall, updateTeslaBall } from './entities/teslaball.js';
 import { createWallSegment, WALL_VISUAL_ID } from './entities/wall.js';
@@ -657,25 +657,15 @@ export function createGameScene(deps) {
     // 僵尸：几何矢量渲染（entities/render.js，设计 §9.1）
     for (const z of scene.zombies) renderZombie(ctx, z, scene.time);
 
-    // 辅助武器载体（迭代 05）：drone 青三角 / gunner 橙方块 / sniper 蓝菱形
+    // 辅助武器：visual ID 来自 AUX_CONFIG；phase 只驱动旋翼/悬浮动画，不改变 orbit
     for (const b of scene.aux.bodies) {
-      ctx.fillStyle = b.kind === 'drone' ? '#5ef' : b.kind === 'gunner' ? '#f80' : '#48f';
-      ctx.beginPath();
-      if (b.kind === 'gunner') {
-        ctx.rect(b.x - 6, b.y - 6, 12, 12);
-      } else if (b.kind === 'sniper') {
-        ctx.moveTo(b.x, b.y - 8);
-        ctx.lineTo(b.x + 6, b.y);
-        ctx.lineTo(b.x, b.y + 8);
-        ctx.lineTo(b.x - 6, b.y);
-        ctx.closePath();
-      } else {
-        ctx.moveTo(b.x, b.y - 7);
-        ctx.lineTo(b.x + 6, b.y + 5);
-        ctx.lineTo(b.x - 6, b.y + 5);
-        ctx.closePath();
-      }
-      ctx.fill();
+      const size = b.kind === 'sniper' ? 16 : b.kind === 'gunner' ? 14 : 12;
+      drawVisual(ctx, AUX_CONFIG[b.kind].visual, b.x, b.y, size, {
+        params: {
+          aimAngle: b.aimAngle,
+        },
+        phase: scene.time,
+      });
     }
 
     if (scene.helicopter) renderHelicopter(ctx, scene.helicopter);
