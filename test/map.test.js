@@ -6,11 +6,11 @@ import { circleHit, circleRectHit } from '../src/core/physics.js';
 import {
   generateMap, MAP_SIZE, hashId, obstacleVariant,
   ROCK_VARIANT_COUNT, RECT_VARIANT_COUNT, obstacleVisualId,
+  SHOP_INTERACT_R, shopPulseState, SUPPLY_STATION_VISUAL_ID, SHOP_LABEL,
 } from '../src/systems/map.js';
 
 const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
 const SHOP_R = 46;
-const SHOP_INTERACT_R = 90;
 const MIN_GAP = 150;
 
 function boundsOf(o) {
@@ -127,4 +127,26 @@ test('障碍物新增视觉字段但碰撞字段与视觉 id 映射不变', () =
       assert.equal(obstacleVisualId({ ...o, variant: 1 }), 'scene.concrete');
     }
   }
+});
+
+test('霓虹补给站保持 5 座与 90px 交互半径，提示使用图标短标签', () => {
+  const m = generateMap(mulberry32(9));
+  assert.equal(m.shops.length, 5);
+  for (const s of m.shops) assert.equal(s.interactR, SHOP_INTERACT_R);
+  assert.equal(SHOP_INTERACT_R, 90);
+  assert.equal(SUPPLY_STATION_VISUAL_ID, 'scene.supplyStation');
+  assert.equal(SHOP_LABEL, 'SUPPLY');
+});
+
+test('补给站交互光环只改变 alpha/scale，90px 边界仍为严格小于', () => {
+  const idle = shopPulseState(0, 90, SHOP_INTERACT_R);
+  const active = shopPulseState(0, 89, SHOP_INTERACT_R);
+  const peak = shopPulseState(Math.PI / 8, 0, SHOP_INTERACT_R);
+  assert.equal(idle.active, false);
+  assert.equal(active.active, true);
+  assert.ok(Math.abs(active.alpha - 0.25) < 1e-12);
+  assert.ok(Math.abs(active.scale - 1.025) < 1e-12);
+  assert.ok(Math.abs(peak.alpha - 0.34) < 1e-12);
+  assert.ok(Math.abs(peak.scale - 1.05) < 1e-12);
+  assert.notEqual(active.scale, peak.scale);
 });

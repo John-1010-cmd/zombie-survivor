@@ -190,3 +190,87 @@ export function generateMap(rng) {
   }
   return { size: MAP_SIZE, spawn: { x: cx, y: cy }, obstacles, shops, scatteredCoins };
 }
+
+export const SUPPLY_STATION_VISUAL_ID = 'scene.supplyStation';
+export const SHOP_LABEL = 'SUPPLY';
+
+export function shopPulseState(timeSec, distance, interactR = SHOP_INTERACT_R) {
+  const wave = (Math.sin(timeSec * 4) + 1) * 0.5;
+  return {
+    active: distance < interactR,
+    alpha: 0.16 + 0.18 * wave,
+    scale: 1 + 0.05 * wave,
+  };
+}
+
+registerPart(SUPPLY_STATION_VISUAL_ID, (ctx, size, params = {}) => {
+  const r = size * 0.5;
+  const active = params.active === true;
+  const ringAlpha = active ? params.alpha ?? 0.2 : 0.08;
+  const ringScale = active ? params.scale ?? 1 : 1;
+  const interactR = params.interactR ?? SHOP_INTERACT_R;
+  ctx.save();
+  ctx.globalAlpha = ringAlpha;
+  ctx.strokeStyle = PALETTE.neon;
+  ctx.shadowColor = PALETTE.neon;
+  ctx.shadowBlur = active ? 12 : 5;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, interactR * ringScale, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = PALETTE.panel;
+  ctx.fillRect(-r * 0.62, -r * 0.12, r * 1.24, r * 0.66);
+  ctx.fillStyle = PALETTE.neonDim;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.76, -r * 0.12);
+  ctx.lineTo(0, -r * 0.66);
+  ctx.lineTo(r * 0.76, -r * 0.12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowColor = PALETTE.neon;
+  ctx.shadowBlur = 7;
+  ctx.strokeStyle = PALETTE.neon;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.strokeRect(-r * 0.62, -r * 0.12, r * 1.24, r * 0.66);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = PALETTE.gold;
+  ctx.fillRect(-r * 0.22, -r * 0.48, r * 0.44, r * 0.24);
+  ctx.strokeStyle = PALETTE.panel;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.11, -r * 0.44);
+  ctx.lineTo(-r * 0.11, -r * 0.28);
+  ctx.moveTo(r * 0.11, -r * 0.44);
+  ctx.lineTo(r * 0.11, -r * 0.28);
+  ctx.stroke();
+  ctx.restore();
+});
+
+export function renderShop(ctx, shop, player, timeSec) {
+  const distance = Math.hypot(player.x - shop.x, player.y - shop.y);
+  const pulse = shopPulseState(timeSec, distance, shop.interactR);
+  drawVisual(ctx, SUPPLY_STATION_VISUAL_ID, shop.x, shop.y, shop.r * 2, {
+    params: {
+      active: pulse.active,
+      alpha: pulse.alpha,
+      scale: pulse.scale,
+      interactR: shop.interactR,
+    },
+    phase: timeSec,
+  });
+  ctx.save();
+  ctx.fillStyle = PALETTE.text;
+  ctx.font = '12px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(SHOP_LABEL, shop.x, shop.y + shop.r + 18);
+  if (distance < shop.interactR + 120) {
+    ctx.globalAlpha = 0.75;
+    ctx.fillStyle = PALETTE.gold;
+    ctx.fillText('AUTO OPEN', shop.x, shop.y - shop.r - 14);
+  }
+  ctx.restore();
+}

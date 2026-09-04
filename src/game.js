@@ -4,7 +4,7 @@ import { mulberry32 } from './core/rng.js';
 import { createPool } from './core/pool.js';
 import { circleHit, createSpatialHash } from './core/physics.js';
 import { createCamera, updateCamera, addShake } from './core/camera.js';
-import { generateMap, MAP_SIZE, renderObstacle } from './systems/map.js';
+import { generateMap, MAP_SIZE, renderObstacle, renderShop } from './systems/map.js';
 import { createPlayer, updatePlayer, damagePlayer } from './entities/player.js';
 import { createZombie, updateZombie } from './entities/zombie.js';
 import { createWeapon, updateWeapon, weaponStats } from './entities/weapon.js';
@@ -566,27 +566,7 @@ export function createGameScene(deps) {
 
     for (const o of map.obstacles) renderObstacle(ctx, o);
 
-    // 商店建筑
-    for (const s of map.shops) {
-      ctx.fillStyle = '#7a5c3e';
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#c9a06a';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r - 6, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.fillStyle = '#ffe9c9';
-      ctx.font = '28px "Microsoft YaHei", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('店', s.x, s.y + 10);
-      if (Math.hypot(player.x - s.x, player.y - s.y) < s.interactR + 120) {
-        ctx.fillStyle = 'rgba(255,215,94,.6)';
-        ctx.font = '16px "Microsoft YaHei", sans-serif';
-        ctx.fillText('商店：走近自动打开', s.x, s.y - s.r - 14);
-      }
-    }
+    for (const s of map.shops) renderShop(ctx, s, player, scene.time);
 
     // 撤离点提示
     if (!isAdventure && modeCfg.duration && rescueAlerted && !scene.helicopter) {
