@@ -129,7 +129,7 @@ export function renderHud(ctx, game, viewport) {
   ctx.fillRect(topX, topY, barW * hpFrac, barH);
   ctx.textAlign = 'center';
   ctx.fillStyle = PALETTE.text;
-  ctx.fillText(game.player.hp + '/' + game.player.maxHp, topX + barW / 2, topY + 13);
+  ctx.fillText(Math.max(0, Math.ceil(game.player.hp)) + '/' + game.player.maxHp, topX + barW / 2, topY + 13);
 
   ctx.textAlign = 'left';
   ctx.fillStyle = PALETTE.gold;

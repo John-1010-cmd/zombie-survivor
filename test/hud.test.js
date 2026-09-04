@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatTime, adventureTierProgress, hudLayout, itemSlotView, hudTooltipView } from '../src/systems/hud.js';
+import { formatTime, adventureTierProgress, hudLayout, itemSlotView, hudTooltipView, renderHud } from '../src/systems/hud.js';
 import { positionTooltip, normalizeTooltipData, createTooltip, attachTooltips } from '../src/ui/tooltip.js';
 
 test('formatTime 三个样例', () => {
@@ -144,4 +144,40 @@ test('attachTooltips 重复调用不累积事件监听器，旧监听器被清�
   root.__tooltipController.destroy();
   const countAfterDestroy = listeners.get(target)?.length || 0;
   assert.equal(countAfterDestroy, 0, '销毁控制器后应移除全部监听器');
+});
+
+function mockHudCtx() {
+  const calls = [];
+  const ctx = { calls };
+  for (const name of ['fillRect', 'strokeRect', 'fillText', 'beginPath', 'arc', 'stroke', 'drawImage']) {
+    ctx[name] = (...args) => calls.push({ name, args });
+  }
+  return ctx;
+}
+
+function hudGame(hp) {
+  return {
+    player: { hp, maxHp: 100 },
+    mode: 'endless',
+    time: 0,
+    kills: 0,
+    coins: 0,
+    inventory: {},
+    weapon: { id: 'pistol', enhance: { damage: 0, fireRate: 0, projectiles: 0, range: 0 } },
+    aux: { counts: { drone: 0, gunner: 0, sniper: 0 } },
+  };
+}
+
+test('HUD 血量文本取整且不为负', () => {
+  const ctx = mockHudCtx();
+  renderHud(ctx, hudGame(55.836500000000005), { width: 800, height: 600 });
+  const hpCall = ctx.calls.find(c => c.name === 'fillText' && typeof c.args[0] === 'string' && c.args[0].includes('/100'));
+  assert.ok(hpCall, '应当渲染血量文本');
+  assert.equal(hpCall.args[0], '56/100', '浮点血量应向上取整显示');
+
+  const ctx2 = mockHudCtx();
+  renderHud(ctx2, hudGame(-6.2244999999999871), { width: 800, height: 600 });
+  const hpCall2 = ctx2.calls.find(c => c.name === 'fillText' && typeof c.args[0] === 'string' && c.args[0].includes('/100'));
+  assert.ok(hpCall2, '应当渲染血量文本');
+  assert.equal(hpCall2.args[0], '0/100', '负血量应钳制为 0');
 });
