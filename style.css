@@ -81,6 +81,35 @@ html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); overfl
 #menu h1 { color: var(--gold); text-shadow: 0 0 12px rgba(255,215,94,.4); margin-bottom: 8px; }
 #menu .btn { display: block; width: 280px; margin: 8px 0; font-size: 16px; }
 
+/* 外观（ui/skins.js） */
+#skins { justify-content: flex-start; padding-top: 24px; overflow-y: auto; }
+#menu #menu-skins { display: block; width: 280px; margin: 8px 0; font-size: 16px; }
+.skin-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px;
+  width: min(900px, 100%); align-items: start; }
+.skin-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.skin-card { width: 168px; min-height: 72px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px; color: var(--text); }
+.skin-card strong { color: var(--gold); font-size: 14px; }
+.skin-card span { color: var(--text-dim); font-size: 12px; }
+.skin-card.selected { border-color: var(--neon); box-shadow: 0 0 12px rgba(94,255,138,.35); }
+.skin-detail { cursor: default; min-height: 360px; }
+.skin-detail:hover { border-color: var(--neon-dim); box-shadow: none; }
+.skin-portrait { width: 192px; height: 192px; margin: 0 auto 12px; display: flex;
+  align-items: center; justify-content: center; border: 1px solid var(--neon-dim);
+  border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+.skin-portrait canvas { width: 192px; height: 192px; image-rendering: auto; }
+.skin-detail h3 { margin: 0 0 8px; color: var(--gold); }
+.skin-detail p { margin: 4px 0; }
+#skin-price { color: var(--gold); font-weight: bold; }
+.skin-currency-icon { display: inline-flex; width: 24px; height: 24px; vertical-align: middle;
+  align-items: center; justify-content: center; margin-right: 4px; }
+.skin-currency-icon canvas { width: 24px; height: 24px; }
+.skin-message { min-height: 18px; color: var(--gold) !important; }
+@media (max-width: 720px) {
+  .skin-layout { grid-template-columns: 1fr; }
+  .skin-detail { order: -1; width: min(320px, 100%); box-sizing: border-box; }
+}
+
 /* 暂停菜单（ui/pause.js） */
 .pause-row { display: flex; gap: 12px; align-items: center; font-size: 14px; }
 .pause-row input[type="range"] { width: 216px; accent-color: var(--neon); }
