@@ -57,6 +57,14 @@ function paintFallback(ctx, x, y, r, options) {
   });
 }
 
+function handleFallback(ctx, x, y, size, settings) {
+  if (typeof settings.onFallback === 'function') {
+    settings.onFallback();
+  } else {
+    paintFallback(ctx, x, y, size, settings);
+  }
+}
+
 function invalidateCanvasCache(id) {
   const prefix = `${id}:`;
   for (const key of VISUAL_CANVAS_CACHE.keys())
@@ -194,8 +202,7 @@ export function drawVisual(ctx, id, x, y, size, options = {}) {
           );
           return true;
         }
-        settings.onFallback?.();
-        paintFallback(ctx, x, y, size, settings);
+        handleFallback(ctx, x, y, size, settings);
         return false;
       }
       if (asset?.crop) {
@@ -211,15 +218,13 @@ export function drawVisual(ctx, id, x, y, size, options = {}) {
     }
     if (!FAILED_IMAGES.has(id) && settings.warn !== false)
       warnOnce(`image:${id}`, `[visuals] 图片视觉 "${id}" 尚未预加载，回退 circle 占位`);
-    settings.onFallback?.();
-    paintFallback(ctx, x, y, size, settings);
+    handleFallback(ctx, x, y, size, settings);
     return false;
   }
 
   if (settings.warn !== false)
     warnOnce(`unknown:${id}`, `[visuals] 未知视觉 ID "${id}"，回退 circle 占位`);
-  settings.onFallback?.();
-  paintFallback(ctx, x, y, size, settings);
+  handleFallback(ctx, x, y, size, settings);
   return false;
 }
 
