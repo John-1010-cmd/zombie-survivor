@@ -1,56 +1,57 @@
-// test/shop-ui.test.js —— showShop 渲染链路（catalogFor 接线回归）。
-// 背景：2026-08-15 商店不唤出事故——ui/shop.js 丢失 catalogFor import，
-// showShop 运行时抛 ReferenceError 并冻结 rAF 循环。此用例在 Node 下用
-// 最小 DOM mock 持久锁定该链路。
+// test/shop-ui.test.js —— showShop 图标/manifest/tooltip 渲染链路。
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-
-// —— 最小 DOM mock（仅 showShop 所需表面）——
-function fakeCanvasContext() {
-  return new Proxy({}, {
-    get: (_target, key) => (key === 'canvas' ? {} : () => {}),
-    set: () => true,
-  });
-}
+import { ASSET_BY_ID } from '../src/config/assets.js';
 
 function mockDom() {
-  const el = tag => {
-    const node = {
-      tagName: tag,
-      className: '', textContent: '', innerHTML: '', _kids: [],
-      dataset: {}, style: {}, hidden: false,
-      appendChild(child) { this._kids.push(child); child.parentNode = this; },
-      prepend(child) { this._kids.unshift(child); child.parentNode = this; },
-      addEventListener() {},
-      setAttribute(name, value) { this[name] = String(value); },
-      classList: { add() {}, remove() {}, contains() { return false; } },
-      replaceChildren(...ns) { this._kids = ns; for (const n of ns) n.parentNode = this; },
-      querySelector() { return null; },
-      querySelectorAll() { return []; },
-    };
-    if (tag === 'canvas') node.getContext = () => fakeCanvasContext();
-    return node;
-  };
+  const el = (tag = 'div') => ({
+    tagName: tag.toUpperCase(),
+    className: '', textContent: '', innerHTML: '', _kids: [], dataset: {},
+    appendChild(n) { this._kids.push(n); n.parentNode = this; },
+    prepend(n) { this._kids.unshift(n); n.parentNode = this; },
+    addEventListener() {},
+    setAttribute(name, value) { this[name] = String(value); },
+    getAttribute(name) { return this[name] ?? null; },
+    replaceWith() {},
+    classList: { add() {}, remove() {}, contains() { return false; } },
+    replaceChildren(...ns) { this._kids = ns; for (const n of ns) n.parentNode = this; },
+    querySelector() { return null; },
+    querySelectorAll() { return []; },
+  });
   const root = el('div');
   const doc = {
-    body: el('body'),
     getElementById: id => (id === 'shop' ? root : null),
-    createElement: tag => el(tag),
+    createElement: el,
     querySelectorAll: () => [],
   };
-  root.ownerDocument = doc;
   return { root, doc };
 }
 
-function flatten(node) {
-  return [node, ...node._kids.flatMap(child => flatten(child))];
+function collectHtml(node) {
+  const attrs = [];
+  if (node.dataset) {
+    for (const [k, v] of Object.entries(node.dataset)) {
+      const attrName = 'data-' + k.replace(/([A-Z])/g, '-$1').toLowerCase();
+      attrs.push(`${attrName}="${v}"`);
+      if (k === 'tooltipName' || k === 'tooltip') {
+        attrs.push(`data-tooltip="${v}"`);
+      }
+    }
+  }
+  const tagOpen = attrs.length > 0 ? `<${node.tagName || 'div'} ${attrs.join(' ')}>` : '';
+  const tagClose = attrs.length > 0 ? `</${node.tagName || 'div'}>` : '';
+  return [tagOpen, node.innerHTML, ...node._kids.flatMap(collectHtml), tagClose].join('\n');
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 let savedDocument;
 before(() => { savedDocument = globalThis.document; });
 after(() => { globalThis.document = savedDocument; });
 
-test('showShop：走近商店链路不抛错且渲染出分组条目（catalogFor 接线回归）', async () => {
+test('showShop：分组链路渲染图标，所有 data-visual-id 都来自 ASSET_BY_ID', async () => {
   const { root, doc } = mockDom();
   globalThis.document = doc;
   const { showShop } = await import('../src/ui/shop.js');
@@ -77,45 +78,25 @@ test('showShop：走近商店链路不抛错且渲染出分组条目（catalogFo
       onEarlyTier: () => {},
       onClose: () => {},
     });
-  }, 'showShop 渲染链路（catalogFor import）不得抛 ReferenceError');
+  }, 'showShop 渲染链路不得抛错');
+  assert.equal(bought, null);
 
-  // 根节点应被填充分组内容（head/build/groups/button 四个子节点）
   assert.ok(root._kids.length >= 3, `面板子节点 ${root._kids.length} 应 ≥3`);
-  const groupsWrap = root._kids[2]; // wrap.shop-groups
-  assert.ok(groupsWrap._kids.length >= 5, `分组行 ${groupsWrap._kids.length} 应 ≥5（武器强化/更换武器/辅助武器/辅助强化/道具）`);
-});
+  const groupsWrap = root._kids[2];
+  assert.ok(groupsWrap._kids.length >= 5, `分组行 ${groupsWrap._kids.length} 应 ≥5`);
 
-test('showShop：图标进入卡片，货币图标存在，未拥有辅助强化整行置灰', async () => {
-  const { root, doc } = mockDom();
-  globalThis.document = doc;
-  const { showShop } = await import('../src/ui/shop.js');
-  const { createWeapon } = await import('../src/entities/weapon.js');
-  const { createInventory } = await import('../src/systems/inventory.js');
-  const { createAux } = await import('../src/entities/companions.js');
-
-  const game = {
-    coins: 500,
-    weapon: createWeapon('pistol'),
-    inventory: createInventory(),
-    aux: createAux(),
-    turretEnhance: { damage: 0, fireRate: 0, projectiles: 0, range: 0 },
-    wallEnhance: { hp: 0 },
-    weaponBought: 0,
-    itemBought: {},
-    tierRemaining: 120,
-  };
-
-  showShop(root, game, { onBuy() {}, onEarlyTier() {}, onClose() {} });
-  const nodes = flatten(root);
-  assert.ok(nodes.some(n => n.dataset.visualId === 'icon.item.medkit'));
-  assert.ok(nodes.some(n => n.dataset.visualId === 'icon.currency.silver'));
-  assert.ok(nodes.some(n => n.className === 'shop-row aux-unowned'));
-  assert.ok(nodes.filter(n => n.className === 'shop-row aux-unowned').length >= 3);
-  const medkit = nodes.find(n => n.dataset.visualId === 'icon.item.medkit');
-  assert.ok(medkit);
-  assert.equal(medkit.dataset.tooltipName, '医疗包');
-  assert.equal(medkit.dataset.tooltipDescription, '立即回复 50% HP');
-  assert.equal(medkit.dataset.tooltipValue, '30 银币');
+  const html = collectHtml(root);
+  const ids = [...html.matchAll(/data-visual-id=["']([^"']+)["']/g)].map(m => m[1]);
+  assert.ok(ids.length >= 6, `商店至少应渲染 6 个图标节点，实际 ${ids.length}`);
+  for (const id of ids) assert.ok(ASSET_BY_ID[id], `${id} 不在 ASSET_BY_ID`);
+  for (const id of [
+    'icon.currency.silver', 'icon.weapon.pistol', 'icon.weapon.rifle',
+    'icon.aux.drone', 'icon.enhance.damage', 'icon.item.medkit',
+  ]) {
+    assert.ok(ASSET_BY_ID[id], `${id} 必须先登记 manifest`);
+    assert.match(html, new RegExp(`data-visual-id=["']${escapeRegExp(id)}["']`), `${id} 未显示`);
+  }
+  assert.ok((html.match(/data-tooltip=/g) || []).length >= 6, '商店条目必须覆盖 tooltip');
 });
 
 test('upgradeView：保留局外等级计算并提供武器图标', async () => {

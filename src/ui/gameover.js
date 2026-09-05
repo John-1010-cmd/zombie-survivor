@@ -1,18 +1,19 @@
-// src/ui/gameover.js —— 结算覆盖层（DOM 胶水，无单测）
-// showGameOver(rootEl, stats, isNew, handlers)：
-//   stats = {time, kills, hp, cleared, mode, gold?, firstClear?}
-//   handlers = { onRestart, onMenu, onLevels? }（冒险模式才有 onLevels）
+// src/ui/gameover.js —— 结算覆盖层（DOM 胶水）。
 import { formatTime } from '../systems/hud.js';
+import { createIconMarkup, bindIconFallback } from './icons.js';
 
 export function showGameOver(rootEl, stats, isNew, handlers) {
   const { onRestart, onMenu, onLevels } = handlers;
   const cleared = !!stats.cleared;
   const isAdventure = stats.mode === 'adventure';
+  const gold = Number.isFinite(stats.gold) ? stats.gold : 0;
+  const rewardText = `金币 +${gold}${stats.firstClear ? '（首通奖励 ×2）' : ''}`;
+  const rewardTip = `金币奖励：${rewardText}`;
   rootEl.innerHTML = isAdventure ? `
     <h2>${cleared ? '通关！' : '任务失败'}</h2>
     <p>${cleared ? '撑满了 6 分钟，成功通关！' : '存活时间：' + formatTime(stats.time)}</p>
     <p>击杀数：${stats.kills}</p>
-    <p style="color:#ffd75e">金币 +${stats.gold}${stats.firstClear ? '（首通奖励 ×2）' : ''}</p>
+    <p class="settlement-reward" data-tooltip="${rewardTip}">${createIconMarkup('icon.currency.gold', '金币')}<span>${rewardText}</span></p>
     <button id="gameover-restart" class="btn">重开本关</button>
     <button id="gameover-levels" class="btn btn-dim">回关卡选择</button>
     <button id="gameover-menu" class="btn btn-dim">回主菜单</button>
@@ -26,6 +27,7 @@ export function showGameOver(rootEl, stats, isNew, handlers) {
     <button id="gameover-menu" class="btn btn-dim">回主菜单</button>
   `;
   rootEl.classList.remove('hidden');
+  bindIconFallback(rootEl);
   rootEl.querySelector('#gameover-restart').addEventListener('click', () => {
     rootEl.classList.add('hidden');
     onRestart();
