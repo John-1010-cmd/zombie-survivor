@@ -1,10 +1,11 @@
 // src/entities/render.js —— 实体渲染门面；注册源位于 core/visuals.js。
 import { MONSTERS, EXPLODER_FUSE_TIME } from '../config/bestiary/monsters.js';
+import { PALETTE } from '../config/palette.js';
 import { TRAIL_MAX } from './projectile.js';
 import { SHAPES, drawVisual } from '../core/visuals.js';
 import { SKINS } from '../config/skins.js';
 
-export { SHAPES };
+export { SHAPES, PARTS } from '../core/visuals.js';
 
 const WARNED_PLAYER_SKINS = new Set();
 const DEFAULT_SKIN_ID = 'wastelandAdventurer';
@@ -70,31 +71,51 @@ export function drawPlayer(ctx, player, timeSec, meta, { drawVisualFn = drawVisu
   ctx.restore();
 }
 
-// 单怪绘制：发光描边 + 受击闪白 + 受伤后血条 + 引信闪烁膨胀（exploder fuse 中）。
-export function renderZombie(ctx, z, timeSec) {
-  const v = MONSTERS[z.type].visual;
-  let r = z.r;
-  let alpha = 1;
-  if (z.fuse !== undefined && !z.fuseDone) {
-    const t = Math.min(1, z.fuse / EXPLODER_FUSE_TIME);
-    r = z.r * (1 + 0.25 * t);
-    alpha = 0.55 + 0.45 * Math.sin(timeSec * 30);
+export function renderZombie(ctx, z, timeSec = 0) {
+  const visual = MONSTERS[z.type]?.visual;
+  if (!visual) {
+    drawVisual(ctx, 'circle', z.x, z.y, z.r * 2, {
+      fillStyle: PALETTE.neon,
+      strokeStyle: PALETTE.neon,
+      shadowColor: PALETTE.neon,
+    });
+    return;
   }
 
-  ctx.globalAlpha = alpha;
-  drawVisual(ctx, v.shape, z.x, z.y, r, { fillStyle: v.color });
-  drawVisual(ctx, v.shape, z.x, z.y, r, {
-    strokeStyle: v.color,
-    lineWidth: 2,
-    shadowColor: v.color,
-    shadowBlur: 12 * (v.glow ?? 0.3),
+  const now = Number.isFinite(timeSec) ? timeSec : 0;
+  const phase = Number.isFinite(z.visualPhase) ? z.visualPhase : 0;
+  const fuseLit = z.fuse !== undefined && !z.fuseDone;
+  const fuseProgress = fuseLit
+    ? Math.max(0, Math.min(1, z.fuse / EXPLODER_FUSE_TIME))
+    : 0;
+  const breathing = 1 + 0.04 * Math.sin(now * 4 + phase);
+  const bob = Math.sin(now * 8 + phase) * Math.min(1.5, z.r * 0.08);
+  let size = z.r * 2 * breathing;
+  let alpha = 1;
+  if (fuseLit) {
+    size *= 1 + 0.25 * fuseProgress;
+    alpha = 0.55 + 0.45 * Math.sin(now * 30 + phase);
+  }
+
+  drawVisual(ctx, z.type, z.x, z.y + bob, size, {
+    visual,
+    phase: now * 8 + phase,
+    lit: fuseLit,
+    fuseProgress,
+    alpha,
   });
-  ctx.globalAlpha = 1;
 
   if (z.hitFlash > 0) {
+    const scaledSize = size * (Number.isFinite(visual.scale) ? visual.scale : 1);
+    ctx.save();
     ctx.globalAlpha = Math.min(1, z.hitFlash / 0.1);
-    drawVisual(ctx, v.shape, z.x, z.y, r, { fillStyle: '#fff' });
-    ctx.globalAlpha = 1;
+    drawVisual(ctx, visual.body, z.x, z.y + bob, scaledSize, {
+      fillStyle: PALETTE.text,
+      strokeStyle: PALETTE.text,
+      shadowColor: PALETTE.text,
+      shadowBlur: 0,
+    });
+    ctx.restore();
   }
 
   if (z.hp < z.maxHp) {
@@ -102,9 +123,9 @@ export function renderZombie(ctx, z, timeSec) {
     const bh = 3;
     const x = z.x - bw / 2;
     const y = z.y - z.r - 8;
-    ctx.fillStyle = '#a33';
+    ctx.fillStyle = PALETTE.obstacle;
     ctx.fillRect(x, y, bw, bh);
-    ctx.fillStyle = '#5eff8a';
+    ctx.fillStyle = PALETTE.neon;
     ctx.fillRect(x, y, bw * Math.max(0, z.hp / z.maxHp), bh);
   }
 }

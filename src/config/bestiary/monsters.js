@@ -8,28 +8,58 @@ export const MONSTERS = {
     id: 'normal', name: '普通僵尸', desc: '最基础的感染者，成群结队地涌来。',
     hp: 30, speed: 70, damage: 8, coin: 1,
     radius: 14, knockbackResist: 0, cost: 1,
-    visual: { shape: 'circle', color: '#6a8f6a', glow: 0.3 },
+    visual: {
+      body: 'circle', scale: 1,
+      palette: { fill: 'ground', stroke: 'neon', glow: 'neonDim' },
+      parts: [
+        { type: 'eyes', style: 'angry', count: 2 },
+        { type: 'mouth', style: 'crooked' },
+        { type: 'cracks', style: 'spots', density: 0.2 },
+      ],
+    },
     behavior: null,
   },
   fast: {
     id: 'fast', name: '高速僵尸', desc: '速度极快的感染者，擅长包抄侧翼。',
     hp: 18, speed: 140, damage: 6, coin: 1,
     radius: 11, knockbackResist: 0, cost: 1,
-    visual: { shape: 'triangle', color: '#c9c25a', glow: 0.3 },
+    visual: {
+      body: 'triangle', scale: 0.9,
+      palette: { fill: 'gold', stroke: 'neon', glow: 'gold' },
+      parts: [
+        { type: 'eyes', style: 'narrow', count: 2 },
+        { type: 'trail', style: 'speed' },
+      ],
+    },
     behavior: null,
   },
   tank: {
     id: 'tank', name: '坦克僵尸', desc: '皮糙肉厚的大型感染者，几乎不为击退所动。',
     hp: 220, speed: 40, damage: 20, coin: 5,
     radius: 24, knockbackResist: 0.8, cost: 6,
-    visual: { shape: 'hexagon', color: '#a85a5a', glow: 0.3 },
+    visual: {
+      body: 'hexagon', scale: 1.3,
+      palette: { fill: 'obstacle', stroke: 'gold', glow: 'gold' },
+      parts: [
+        { type: 'spikes', style: 'rim', count: 6 },
+        { type: 'mouth', style: 'thick-jaw' },
+      ],
+    },
     behavior: null,
   },
   boss: {
     id: 'boss', name: '守门Boss', desc: '守在撤离点的巨型感染者。只在坚守模式最后时刻出现。',
     hp: 7040, speed: 20, damage: 40, coin: 50,
     radius: 41, knockbackResist: 0.95, cost: 999,
-    visual: { shape: 'pentagon', color: '#7a2f2f', glow: 0.5 },
+    visual: {
+      body: 'pentagon', scale: 1.5,
+      palette: { fill: 'panel', stroke: 'gold', glow: 'neon' },
+      parts: [
+        { type: 'spikes', style: 'multi', count: 10 },
+        { type: 'eyes', style: 'wide', count: 3 },
+        { type: 'mouth', style: 'glow' },
+      ],
+    },
     behavior: null,
     special: true, // 不走关卡倍率与局内增长（设计 §2.1 Boss 例外）；坚守隐藏期间图鉴界面不显示
   },
@@ -37,7 +67,14 @@ export const MONSTERS = {
     id: 'exploder', name: '自爆僵尸', desc: '接近目标后点燃引信，1.2 秒后自爆。趁引信未燃尽将其击毙！',
     hp: 40, speed: 90, damage: 5, coin: 3,
     radius: 13, knockbackResist: 0, cost: 2,
-    visual: { shape: 'diamond', color: '#e08a3c', glow: 0.5 },
+    visual: {
+      body: 'diamond', scale: 1.05,
+      palette: { fill: 'gold', stroke: 'neon', glow: 'gold' },
+      parts: [
+        { type: 'cracks', style: 'fuse', density: 0.3 },
+        { type: 'spikes', style: 'sparks', count: 4 },
+      ],
+    },
     behavior: 'exploder',
     aoe: { damage: 30, radius: 80 }, // AoE 与接触 damage 同乘区缩放（设计 §4.3）
   },
