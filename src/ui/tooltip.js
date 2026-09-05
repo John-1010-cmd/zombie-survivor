@@ -1,12 +1,56 @@
 // src/ui/tooltip.js —— DOM 覆盖层 tooltip；位置计算保持纯函数可单测。
 const VIEWPORT_GAP = 8;
 
-export function normalizeTooltipData(data = {}) {
+export function parseTooltipAttribute(text = '') {
+  const str = String(text ?? '').trim();
+  if (!str) return { name: '', description: '', value: '' };
+  const colonIdx = str.search(/[:：]/);
+  if (colonIdx > 0) {
+    return {
+      name: str.slice(0, colonIdx).trim(),
+      description: str.slice(colonIdx + 1).trim(),
+      value: '',
+    };
+  }
   return {
-    name: String(data.name ?? ''),
-    description: String(data.description ?? ''),
-    value: String(data.value ?? ''),
+    name: str,
+    description: '',
+    value: '',
   };
+}
+
+export function normalizeTooltipData(data = {}) {
+  if (typeof data === 'string') {
+    return parseTooltipAttribute(data);
+  }
+  if (data && !data.name && !data.description && !data.value && data.tooltip) {
+    return parseTooltipAttribute(data.tooltip);
+  }
+  return {
+    name: String(data?.name ?? ''),
+    description: String(data?.description ?? ''),
+    value: String(data?.value ?? ''),
+  };
+}
+
+export function extractTooltipData(target) {
+  if (!target) return { name: '', description: '', value: '' };
+  const dataset = target.dataset || {};
+  if (dataset.tooltipName !== undefined || dataset.tooltipDescription !== undefined || dataset.tooltipValue !== undefined) {
+    return {
+      name: dataset.tooltipName ?? '',
+      description: dataset.tooltipDescription ?? '',
+      value: dataset.tooltipValue ?? '',
+    };
+  }
+  if (dataset.tooltip !== undefined) {
+    return parseTooltipAttribute(dataset.tooltip);
+  }
+  const rawAttr = target.getAttribute?.('data-tooltip');
+  if (rawAttr !== null && rawAttr !== undefined) {
+    return parseTooltipAttribute(rawAttr);
+  }
+  return { name: '', description: '', value: '' };
 }
 
 export function positionTooltip(anchorRect, tooltipRect, viewport) {
@@ -75,11 +119,7 @@ export function createTooltip(root = null) {
 
 export function bindTooltip(target, tooltip, data) {
   target.__tooltipCleanup?.();
-  const show = () => tooltip.show(target, data ?? {
-    name: target.dataset.tooltipName,
-    description: target.dataset.tooltipDescription,
-    value: target.dataset.tooltipValue,
-  });
+  const show = () => tooltip.show(target, data ?? extractTooltipData(target));
   const hide = () => tooltip.hide();
   target.addEventListener('mouseenter', show);
   target.addEventListener('focus', show);
@@ -100,13 +140,23 @@ export function attachTooltips(root) {
   root.__tooltipController?.destroy?.();
   const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
   const tooltip = createTooltip(doc?.body || root);
-  const targets = root.querySelectorAll?.('[data-tooltip-name]') || [];
+  const targets = [];
+  const seen = new Set();
+  const collect = selector => {
+    try {
+      const list = root.querySelectorAll?.(selector) || [];
+      for (const target of list) {
+        if (!seen.has(target)) {
+          seen.add(target);
+          targets.push(target);
+        }
+      }
+    } catch {}
+  };
+  collect('[data-tooltip-name]');
+  collect('[data-tooltip]');
   for (const target of targets) {
-    bindTooltip(target, tooltip, {
-      name: target.dataset.tooltipName,
-      description: target.dataset.tooltipDescription,
-      value: target.dataset.tooltipValue,
-    });
+    bindTooltip(target, tooltip, extractTooltipData(target));
   }
   const originalDestroy = tooltip.destroy;
   tooltip.destroy = () => {

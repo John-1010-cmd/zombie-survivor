@@ -2,6 +2,7 @@
 import { ADVENTURE_LEVELS } from '../config/adventure.js';
 import { formatTime } from '../systems/hud.js';
 import { createIconMarkup, bindIconFallback } from './icons.js';
+import { attachTooltips } from './tooltip.js';
 
 export function showLevels(rootEl, meta, onStart, onBack) {
   const unlockedMax = Math.min(meta.adventure.unlocked, ADVENTURE_LEVELS.length);
@@ -36,4 +37,5 @@ export function showLevels(rootEl, meta, onStart, onBack) {
     rootEl.classList.add('hidden');
     onBack();
   });
+  attachTooltips(rootEl);
 }

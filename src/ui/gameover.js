@@ -1,6 +1,7 @@
 // src/ui/gameover.js —— 结算覆盖层（DOM 胶水）。
 import { formatTime } from '../systems/hud.js';
 import { createIconMarkup, bindIconFallback } from './icons.js';
+import { attachTooltips } from './tooltip.js';
 
 export function showGameOver(rootEl, stats, isNew, handlers) {
   const { onRestart, onMenu, onLevels } = handlers;
@@ -42,4 +43,5 @@ export function showGameOver(rootEl, stats, isNew, handlers) {
       onLevels();
     });
   }
+  attachTooltips(rootEl);
 }

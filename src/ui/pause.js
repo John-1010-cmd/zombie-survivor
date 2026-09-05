@@ -1,4 +1,6 @@
 // src/ui/pause.js —— Esc 暂停菜单（DOM 胶水）。
+import { attachTooltips } from './tooltip.js';
+
 export function showPause(rootEl, settings, handlers) {
   const { onResume, onQuit, onChange } = handlers;
   rootEl.innerHTML = `
@@ -43,4 +45,5 @@ export function showPause(rootEl, settings, handlers) {
   rootEl.querySelector('#pause-shake').addEventListener('change', e => {
     onChange({ ...settings, screenShake: e.target.checked });
   });
+  attachTooltips(rootEl);
 }
