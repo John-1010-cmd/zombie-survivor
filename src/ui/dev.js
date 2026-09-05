@@ -3,13 +3,45 @@
 // 加银币/放置僵尸的实际逻辑在 game.js（devAddCoins/devSpawnZombie），本文件只做展示与回调。
 import { MONSTERS, playableMonsters } from '../config/bestiary/monsters.js';
 
+export function summarizePerf(samples, { dpr = 1, cssWidth = 0, cssHeight = 0 } = {}) {
+  if (!Array.isArray(samples) || samples.length === 0)
+    throw new TypeError('samples must be a non-empty array');
+  const countOf = (sample, field) => {
+    const value = sample[field] ?? 0;
+    if (!Number.isFinite(value) || value < 0)
+      throw new TypeError(`${field} must be a non-negative finite number`);
+    return value;
+  };
+  for (const [index, sample] of samples.entries()) {
+    if (!sample || !Number.isFinite(sample.frameMs) || sample.frameMs < 0)
+      throw new TypeError(`samples[${index}].frameMs must be a non-negative finite number`);
+    countOf(sample, 'iconCacheHits');
+    countOf(sample, 'iconCacheMisses');
+    countOf(sample, 'drawImageCount');
+  }
+  const frameTimes = samples.map(sample => sample.frameMs);
+  const dprValue = Number.isFinite(dpr) && dpr > 0 ? Math.min(dpr, 2) : 1;
+  return {
+    frameCount: samples.length,
+    cssWidth,
+    cssHeight,
+    dpr: dprValue,
+    averageFrameMs: frameTimes.reduce((sum, value) => sum + value, 0) / samples.length,
+    peakFrameMs: Math.max(...frameTimes),
+    iconCacheHits: samples.reduce((sum, sample) => sum + countOf(sample, 'iconCacheHits'), 0),
+    iconCacheMisses: samples.reduce((sum, sample) => sum + countOf(sample, 'iconCacheMisses'), 0),
+    drawImageTotal: samples.reduce((sum, sample) => sum + countOf(sample, 'drawImageCount'), 0),
+    drawImageMaxPerFrame: Math.max(...samples.map(sample => countOf(sample, 'drawImageCount'))),
+  };
+}
+
 // FPS 常驻读数（任务12返修）：独立于 dev 面板的 body 级元素，默认隐藏，菜单内按钮开关。
 // 打开 dev 菜单会暂停游戏，面板内读数只能测到暂停态；挪出后压测时关菜单也能实时读数。
 // 插入到 body 首个子元素前：canvas 是 static 定位仍在它下面，各 overlay 在 DOM 序靠后仍压在它上面。
 // fpsTick 为模块级单例：showDev 每次打开都 replaceChildren 重建 DOM，rAF 循环全局只挂一条。
 let fpsEl = null;
 let fpsRunning = false;
-let fpsAcc = 0, fpsN = 0, fpsLast = performance.now();
+let fpsAcc = 0, fpsN = 0, fpsPeak = 0, fpsLast = performance.now();
 function ensureFpsEl() {
   if (fpsEl) return fpsEl;
   fpsEl = document.createElement('div');
@@ -22,11 +54,11 @@ function ensureFpsEl() {
 function fpsTick() {
   const now = performance.now();
   const dt = now - fpsLast; fpsLast = now;
-  fpsAcc += dt; fpsN++;
+  fpsAcc += dt; fpsN++; fpsPeak = Math.max(fpsPeak, dt);
   if (fpsAcc >= 1000) {
     const avg = fpsAcc / fpsN;
-    fpsEl.textContent = `FPS ${Math.round(1000 / avg)} / 平均帧时 ${avg.toFixed(1)}ms`;
-    fpsAcc = 0; fpsN = 0;
+    fpsEl.textContent = `FPS ${Math.round(1000 / avg)} / 平均帧时 ${avg.toFixed(1)}ms / 峰值 ${fpsPeak.toFixed(1)}ms`;
+    fpsAcc = 0; fpsN = 0; fpsPeak = 0;
   }
   requestAnimationFrame(fpsTick);
 }

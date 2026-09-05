@@ -1,0 +1,1913 @@
+{
+  "viewports": [
+    {
+      "id": "small",
+      "cssWidth": 640,
+      "cssHeight": 360,
+      "dpr": 1,
+      "screenshot": "docs/superpowers/ui-visual-overhaul-package-8-small.png"
+    },
+    {
+      "id": "wide",
+      "cssWidth": 1920,
+      "cssHeight": 1080,
+      "dpr": 1,
+      "screenshot": "docs/superpowers/ui-visual-overhaul-package-8-wide.png"
+    },
+    {
+      "id": "highDpr",
+      "cssWidth": 1280,
+      "cssHeight": 720,
+      "dpr": 2,
+      "screenshot": "docs/superpowers/ui-visual-overhaul-package-8-high-dpr.png"
+    }
+  ],
+  "performance": {
+    "stressViewport": "highDpr",
+    "durationSec": 5,
+    "cssWidth": 1280,
+    "cssHeight": 720,
+    "dpr": 2,
+    "averageFrameMs": 16.662000000000006,
+    "peakFrameMs": 26.9,
+    "iconCache": {
+      "hits": 1500,
+      "misses": 0
+    },
+    "drawImage": {
+      "total": 44548,
+      "maxPerFrame": 296
+    }
+  },
+  "frameSamples": [
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 296
+    },
+    {
+      "frameMs": 15.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 26.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 12.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 13.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 14.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 14.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 15.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 15.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 15.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.2,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.5,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.9,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.7,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.4,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.8,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.6,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 16.3,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    },
+    {
+      "frameMs": 17.1,
+      "iconCacheHits": 5,
+      "iconCacheMisses": 0,
+      "drawImageCount": 148
+    }
+  ],
+  "checklist": {
+    "taskPackages": [
+      {
+        "id": 1,
+        "name": "响应式 Canvas 与 HUD 四角锚定 (Task 1-3)",
+        "checked": true,
+        "evidence": "fitCanvas 动态换算 CSS 像素并对 DPR 封顶 2；setViewport 保证相机与逻辑视口同构；HUD 道具槽居左下、状态居右、生命居左上，全视口 Canvas CSS 铺满，在 640x360 / 1920x1080 / 1280x720 三视口实测无挤压溢出。"
+      },
+      {
+        "id": 2,
+        "name": "统一视觉注册表与图标管线 (Task 4-8)",
+        "checked": true,
+        "evidence": "visuals.js 统一形状/部件/图片三类注册与离屏缓存；21 枚 128x128 霓虹赛璐璐透明底 PNG 入库 assets.js manifest；武器升级与商店全部接入 manifest 图标与 48px createIconCanvas 挂载。"
+      },
+      {
+        "id": 3,
+        "name": "HUD 槽位图标与朝向平滑插值 (Task 9-10)",
+        "checked": true,
+        "evidence": "HUD 五槽接入 manifest 图标、数字键提示、数量角标与空槽锁定；attachTooltips 边界安全夹取；angles.js 共享最短弧角度工具，玩家朝向 240°/s 平滑插值。"
+      },
+      {
+        "id": 4,
+        "name": "火炮、围墙与辅助武器组合建模 (Task 11-13)",
+        "checked": true,
+        "evidence": "固定火炮底座+转动炮管+开火闪光+平滑瞄准；模块化石墙段与 0.66/0.33 三档受损裂缝与霓虹描边；随行无人机/移动火炮/远程火炮三类组合模型与环绕开火，场内实况三件套在三视口截图完整存证。"
+      },
+      {
+        "id": 5,
+        "name": "场景障碍、补给站与地形纹理 (Task 14-17)",
+        "checked": true,
+        "evidence": "障碍物基于稳定 id 与哈希变体渲染；12 张场景 PNG 资产接入与程序化 fallback 兜底；草地 tile 预渲染平铺缓存；地雷、特斯拉球与直升机双层视觉（PNG 主体+程序化动效层）。"
+      },
+      {
+        "id": 6,
+        "name": "主角皮肤系统与外观界面 (Task 18-20)",
+        "checked": true,
+        "evidence": "3 款首发皮肤（荒野冒险家/霓虹佣兵/暗夜猎手）注册与 meta v2 迁移；512x256 八帧图集切片渲染与白球安全回退；主菜单外观入口与皮肤选择/购买/选用全流程。"
+      },
+      {
+        "id": 7,
+        "name": "怪物组合式 visual 与图鉴同源渲染 (Task 21-22)",
+        "checked": true,
+        "evidence": "五种怪物组合部件轮廓与调色板分离；游戏内与图鉴同源调用 visuals.js 离屏渲染，图鉴未遭遇怪物 ??? 占位防护，武器图鉴卡片与武器升级共享图标。"
+      },
+      {
+        "id": 8,
+        "name": "三视口实景验收与性能红线归档 (Task 23-24)",
+        "checked": true,
+        "evidence": "结算/暂停/关卡图标与 tooltip 全覆盖；webbridge 实景验收 640x360 / 1920x1080 / 1280x720(DPR 2) 三视口截图存证；400 怪+满强化机枪 5 秒满载压测平均帧时 16.7ms (≤20ms 红线)，峰值 26.9ms，DPR 封顶 2。"
+      }
+    ],
+    "visual": {
+      "canvasFullSmall": true,
+      "canvasFullWide": true,
+      "canvasFullHighDpr": true,
+      "hudAnchors": true,
+      "iconsAllRequiredScreens": true,
+      "transparentNoBlackEdge": true,
+      "tooltipCoverage": true,
+      "auxEnhancementLockedRow": true,
+      "sceneSpriteRenderingWithFallback": true,
+      "bestiarySharesMonsterVisual": true,
+      "skinFlowAndFallback": true,
+      "paletteTokens": true,
+      "terrainTileCached": true,
+      "dprCapped": true,
+      "drawImageControlled": true
+    }
+  }
+}
