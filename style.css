@@ -135,8 +135,15 @@ html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); overfl
   max-width: 1064px; }
 .bestiary-card { width: 200px; cursor: default; }
 .bestiary-card:hover { border-color: var(--neon-dim); box-shadow: none; }
-.bestiary-swatch { width: 32px; height: 32px; margin: 0 auto 8px;
+.bestiary-visual,
+.bestiary-visual-slot,
+.bestiary-lock { width: 48px; height: 48px; margin: 0 auto 8px; }
+.bestiary-visual { display: block; }
+.bestiary-visual-slot,
+.bestiary-lock { display: grid; place-items: center;
   border: 1px solid var(--neon-dim); border-radius: var(--radius); }
+.bestiary-lock { box-sizing: border-box; color: var(--text-dim); font-size: 24px;
+  background: var(--bg); }
 .bestiary-note { font-size: 12px; }
 
 /* 开发者菜单（ui/dev.js）—— ` 键开关 */

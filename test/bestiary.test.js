@@ -5,8 +5,9 @@ import { MONSTERS, MAX_ZOMBIE_R, playableMonsters } from '../src/config/bestiary
 import { DIFFICULTY_TIERS } from '../src/config/difficulty.js';
 import { WEAPONS, SPECIAL_STATS } from '../src/config/bestiary/weapons.js';
 import { weaponUpgradePrice } from '../src/config/economy.js';
-import { monsterView, weaponView } from '../src/ui/bestiary.js';
+import { monsterView, weaponView, showBestiary, BESTIARY_VISUAL_SIZES } from '../src/ui/bestiary.js';
 import { PARTS, SHAPES, renderZombie } from '../src/entities/render.js';
+import { getVisualCanvas, clearCaches } from '../src/core/visuals.js';
 import { createZombie } from '../src/entities/zombie.js';
 import { PALETTE } from '../src/config/palette.js';
 
@@ -223,4 +224,161 @@ test('每个怪物的 visual.body 与 visual.parts[].type 都已注册', () => {
     assert.ok(SHAPES[id], `${id} 基础形状缺失`);
   for (const id of ['eyes', 'mouth', 'cracks', 'trail', 'spikes'])
     assert.ok(PARTS[id], `${id} 怪物部件缺失`);
+});
+
+function mockUiCtx() {
+  return {
+    globalAlpha: 1,
+    lineWidth: 1,
+    shadowBlur: 0,
+    save() {}, restore() {}, translate() {}, rotate() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {},
+    quadraticCurveTo() {}, arc() {}, ellipse() {},
+    fill() {}, stroke() {}, fillRect() {}, clearRect() {}, drawImage() {},
+    setLineDash() {},
+  };
+}
+
+function mockCanvas() {
+  const ctx = mockUiCtx();
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    className: '',
+    getContext() { return ctx; },
+    setAttribute() {},
+    toDataURL() { return 'data:image/png;base64,placeholder'; },
+  };
+}
+
+function mockBestiaryDom() {
+  const handlers = new Map();
+  const root = {
+    _html: '',
+    _replaced: [],
+    classList: { add() {}, remove() {}, contains() { return false; } },
+    set innerHTML(value) {
+      this._html = value;
+      this._replaced = [];
+    },
+    get innerHTML() { return this._html; },
+    querySelector(selector) {
+      if (selector.startsWith('#')) {
+        return {
+          addEventListener: (_event, handler) => handlers.set(selector, handler),
+        };
+      }
+      const match = selector.match(/\[data-visual-slot="([^"]+)"\]/);
+      if (match) {
+        return {
+          replaceWith: node => this._replaced.push({ slot: match[1], node }),
+        };
+      }
+      return null;
+    },
+  };
+  const documentMock = {
+    createElement(tag) {
+      assert.equal(tag, 'canvas');
+      return mockCanvas();
+    },
+  };
+  return { root, documentMock, handlers };
+}
+
+test('图鉴视图：未遭遇不泄露 visual，已遭遇返回配置中的同源 visual', () => {
+  const locked = monsterView(MONSTERS.exploder, {});
+  assert.equal(locked.unlocked, false);
+  assert.equal('visual' in locked, false);
+  assert.equal('color' in locked, false);
+  assert.equal('parts' in locked, false);
+
+  const seen = monsterView(MONSTERS.exploder, { exploder: 1 });
+  assert.equal(seen.unlocked, true);
+  assert.strictEqual(seen.visual, MONSTERS.exploder.visual);
+  assert.equal(seen.visual.body, 'diamond');
+  assert.equal(seen.visual.parts[0].type, 'cracks');
+});
+
+test('武器图鉴视图使用武器本体 icon，不暴露弹道 color 作为图标', () => {
+  for (const w of Object.values(WEAPONS)) {
+    assert.equal(w.icon, `icon.weapon.${w.id}`, `${w.id}.icon`);
+    const view = weaponView(w, {});
+    assert.equal(view.icon, w.icon);
+    assert.equal('color' in view, false);
+  }
+});
+
+test('图鉴通过 getVisualCanvas 使用 24/32/48/64 档位，卡片不再生成 swatch', () => {
+  assert.deepEqual(BESTIARY_VISUAL_SIZES, [24, 32, 48, 64]);
+  const { root, documentMock, handlers } = mockBestiaryDom();
+  const previousDocument = globalThis.document;
+  globalThis.document = documentMock;
+  clearCaches();
+  try {
+    for (const size of BESTIARY_VISUAL_SIZES) {
+      const canvas = getVisualCanvas('normal', size, { visual: MONSTERS.normal.visual });
+      assert.equal(canvas.width, size);
+      assert.equal(canvas.height, size);
+    }
+    showBestiary(root, {
+      bestiaryKills: { normal: 1 },
+      weaponLevels: {},
+    }, () => {});
+    assert.doesNotMatch(root.innerHTML, /bestiary-swatch/);
+    assert.match(root.innerHTML, /data-visual-slot="monster-normal"/);
+    assert.ok(root._replaced.some(({ slot, node }) =>
+      slot === 'monster-normal' && node.width === 48 && node.height === 48));
+    assert.doesNotMatch(root.innerHTML, /data-visual-slot="monster-exploder"/);
+    assert.equal(root._replaced.some(({ slot }) => slot === 'monster-exploder'), false);
+
+    handlers.get('#bestiary-tab-weapons')();
+    assert.doesNotMatch(root.innerHTML, /bestiary-swatch/);
+    assert.ok(root._replaced.some(({ slot, node }) =>
+      slot === 'weapon-pistol' && node.width === 48 && node.height === 48));
+  } finally {
+    clearCaches();
+    globalThis.document = previousDocument;
+  }
+});
+
+test('新增仅复用已注册部件的怪物配置时，图鉴与游戏内渲染无需新增分支', () => {
+  const extension = {
+    id: 'scout',
+    name: '侦察僵尸',
+    desc: '只复用既有眼睛与嘴部部件的扩展条目。',
+    hp: 25, speed: 100, damage: 7, coin: 2,
+    radius: 12, knockbackResist: 0.1, cost: 2,
+    visual: {
+      body: 'circle', scale: 0.95,
+      palette: { fill: 'ground', stroke: 'neon', glow: 'neonDim' },
+      parts: [
+        { type: 'eyes', style: 'angry', count: 2 },
+        { type: 'mouth', style: 'crooked' },
+      ],
+    },
+    behavior: null,
+  };
+  MONSTERS.scout = extension;
+  const { root, documentMock } = mockBestiaryDom();
+  const previousDocument = globalThis.document;
+  globalThis.document = documentMock;
+  clearCaches();
+  try {
+    assert.ok(playableMonsters({ includeSpecial: true }).some(m => m.id === 'scout'));
+    const view = monsterView(extension, { scout: 2 });
+    assert.equal(view.unlocked, true);
+    assert.strictEqual(view.visual, extension.visual);
+    showBestiary(root, { bestiaryKills: { scout: 2 }, weaponLevels: {} }, () => {});
+    assert.ok(root._replaced.some(({ slot }) => slot === 'monster-scout'));
+
+    const ctx = mockUiCtx();
+    const z = { type: 'scout', x: 0, y: 0, r: 12, hp: 25, maxHp: 25, hitFlash: 0, visualPhase: 0 };
+    assert.doesNotThrow(() => renderZombie(ctx, z, 1));
+  } finally {
+    clearCaches();
+    globalThis.document = previousDocument;
+    delete MONSTERS.scout;
+  }
 });
