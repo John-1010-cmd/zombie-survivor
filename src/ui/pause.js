@@ -1,25 +1,29 @@
-// src/ui/pause.js —— Esc 暂停菜单（DOM 胶水，无单测）。
-// showPause(rootEl, settings, handlers)：
-//   settings = {volume:0–1, damageNumbers:boolean, screenShake:boolean}
-//   handlers = {onResume(), onQuit(), onChange(settings)}
-// 开关与滑块变更即调 onChange（新 settings 对象）；持久化由调用方负责。
+// src/ui/pause.js —— Esc 暂停菜单（DOM 胶水）。
+import { attachTooltips } from './tooltip.js';
+
 export function showPause(rootEl, settings, handlers) {
   const { onResume, onQuit, onChange } = handlers;
   rootEl.innerHTML = `
     <h2>暂停</h2>
     <div class="pause-row">
-      <label>音量 <input id="pause-volume" type="range" min="0" max="100"
-        value="${Math.round(settings.volume * 100)}"></label>
+      <label data-tooltip="音量：调整音量">
+        音量 <input id="pause-volume" type="range" min="0" max="100"
+          value="${Math.round(settings.volume * 100)}" aria-label="音量">
+      </label>
     </div>
     <div class="pause-row">
-      <label><input id="pause-damage" type="checkbox"${settings.damageNumbers ? ' checked' : ''}> 伤害数字</label>
+      <label data-tooltip="伤害数字：显示或隐藏战斗伤害数字">
+        <input id="pause-damage" type="checkbox"${settings.damageNumbers ? ' checked' : ''}> 伤害数字
+      </label>
     </div>
     <div class="pause-row">
-      <label><input id="pause-shake" type="checkbox"${settings.screenShake ? ' checked' : ''}> 震屏</label>
+      <label data-tooltip="震屏：受击和爆炸时启用或关闭屏幕震动">
+        <input id="pause-shake" type="checkbox"${settings.screenShake ? ' checked' : ''}> 震屏
+      </label>
     </div>
     <div class="pause-buttons">
-      <button id="pause-resume" class="btn">继续</button>
-      <button id="pause-quit" class="btn btn-dim">回主菜单</button>
+      <button id="pause-resume" class="btn" title="继续游戏">继续</button>
+      <button id="pause-quit" class="btn btn-dim" title="回主菜单">回主菜单</button>
     </div>
   `;
   rootEl.classList.remove('hidden');
@@ -41,4 +45,5 @@ export function showPause(rootEl, settings, handlers) {
   rootEl.querySelector('#pause-shake').addEventListener('change', e => {
     onChange({ ...settings, screenShake: e.target.checked });
   });
+  attachTooltips(rootEl);
 }
