@@ -2,6 +2,16 @@ import { MONSTERS } from '../config/bestiary/monsters.js';
 import { calcMonsterStats } from '../systems/scaling.js';
 import { slideCircleObstacles } from '../core/physics.js';
 
+function visualPhaseFor(typeId, x, y) {
+  const seed = `${typeId}:${Math.round(x)}:${Math.round(y)}`;
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return ((hash >>> 0) / 4294967296) * Math.PI * 2;
+}
+
 // 数值统一走 scaling 管线（设计 §2.1）：
 // opts = { level = 冒险关卡序号(无尽/坚守恒 1), tier = 当前档位(coin 递增用), timeSec, mode }
 export function createZombie(typeId, x, y, opts = {}) {
@@ -16,6 +26,7 @@ export function createZombie(typeId, x, y, opts = {}) {
     aoe: c.aoe ? { damage: s.aoeDamage, radius: c.aoe.radius } : undefined, // 缩放后 AoE
     fuseDone: false, // 行为状态位（exploder：引信燃尽标记，behaviors.js 读写）
     counted: false,  // killZombie 防重（战斗击杀即时结算，行为自杀在清理循环补结算）
+    visualPhase: visualPhaseFor(typeId, x, y),
     kbx: 0, kby: 0, hitFlash: 0, alive: true,
   };
 }

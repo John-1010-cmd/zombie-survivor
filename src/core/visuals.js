@@ -157,8 +157,219 @@ export function preloadVisuals() {
   return Promise.all([...IMAGE_URLS.keys()].map(id => loadImage(id)));
 }
 
+const warnedMonsterVisuals = new Set();
+
+function warnMonsterVisual(kind, id) {
+  const key = `${kind}:${id}`;
+  if (warnedMonsterVisuals.has(key)) return;
+  warnedMonsterVisuals.add(key);
+  console.warn(`未知怪物视觉 ${kind}: ${id}，已使用 circle/占位回退`);
+}
+
+function resolveMonsterColor(token, fallback) {
+  return typeof token === 'string' && typeof PALETTE[token] === 'string'
+    ? PALETTE[token]
+    : PALETTE[fallback];
+}
+
+function drawMonsterComposite(ctx, x, y, size, visual, options = {}) {
+  const scale = Number.isFinite(visual.scale) && visual.scale > 0 ? visual.scale : 1;
+  const drawSize = size * scale;
+  const radius = drawSize / 2;
+  const colors = {
+    fill: resolveMonsterColor(visual.palette?.fill, 'ground'),
+    stroke: resolveMonsterColor(visual.palette?.stroke, 'neon'),
+    glow: resolveMonsterColor(visual.palette?.glow, 'neonDim'),
+  };
+  const body = SHAPES[visual.body];
+  if (!body) warnMonsterVisual('body', visual.body);
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha *= Number.isFinite(options.alpha) ? options.alpha : 1;
+  ctx.fillStyle = options.fillStyle ?? colors.fill;
+  ctx.strokeStyle = options.strokeStyle ?? colors.stroke;
+  ctx.shadowColor = options.shadowColor ?? colors.glow;
+  ctx.shadowBlur = options.shadowBlur ?? 8;
+  ctx.lineWidth = options.lineWidth ?? 2;
+
+  (body || SHAPES.circle)(ctx, 0, 0, radius);
+  ctx.fill();
+  (body || SHAPES.circle)(ctx, 0, 0, radius);
+  ctx.stroke();
+
+  const parts = Array.isArray(visual.parts) ? visual.parts : [];
+  const phase = Number.isFinite(options.phase) ? options.phase : 0;
+  const lit = options.lit === true;
+  const fuseProgress = Number.isFinite(options.fuseProgress) ? options.fuseProgress : 0;
+  for (let pass = 0; pass < 2; pass++) {
+    for (const part of parts) {
+      if ((pass === 0) !== (part.type === 'trail')) continue;
+      const drawPart = PARTS[part.type];
+      if (!drawPart) {
+        warnMonsterVisual('part', part.type);
+        ctx.save();
+        ctx.fillStyle = colors.glow;
+        SHAPES.circle(ctx, 0, 0, Math.max(1, radius * 0.12));
+        ctx.fill();
+        ctx.restore();
+        continue;
+      }
+      drawPart(ctx, drawSize, { ...part, palette: colors, lit, fuseProgress }, phase);
+    }
+  }
+  ctx.restore();
+}
+
+registerPart('eyes', (ctx, size, params) => {
+  const r = size / 2;
+  const count = Math.max(1, Math.trunc(params.count ?? 2));
+  const narrow = params.style === 'narrow';
+  const eyeColor = params.palette?.glow ?? PALETTE.neon;
+  ctx.save();
+  ctx.fillStyle = eyeColor;
+  for (let i = 0; i < count; i++) {
+    const offset = count === 1 ? 0 : (i / (count - 1) - 0.5) * r * 0.9;
+    const ey = -r * 0.18;
+    const ew = r * (narrow ? 0.13 : 0.18);
+    const eh = r * (narrow ? 0.045 : 0.1);
+    ctx.beginPath();
+    if (params.style === 'angry') {
+      ctx.moveTo(offset - ew, ey - eh * 0.4);
+      ctx.lineTo(offset + ew, ey + eh * 0.4);
+      ctx.lineTo(offset + ew * 0.75, ey + eh * 1.2);
+      ctx.lineTo(offset - ew * 0.75, ey + eh * 0.5);
+      ctx.closePath();
+    } else {
+      ctx.ellipse(offset, ey, ew, eh, 0, 0, Math.PI * 2);
+    }
+    ctx.fill();
+  }
+  ctx.restore();
+});
+
+registerPart('mouth', (ctx, size, params) => {
+  const r = size / 2;
+  const style = params.style ?? 'crooked';
+  const color = params.lit ? (params.palette?.glow ?? PALETTE.neon) : (params.palette?.stroke ?? PALETTE.neon);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = Math.max(1, r * (style === 'thick-jaw' ? 0.1 : 0.06));
+  ctx.shadowColor = style === 'glow' ? color : 'transparent';
+  ctx.shadowBlur = style === 'glow' ? r * 0.35 : 0;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.35, r * 0.2);
+  ctx.quadraticCurveTo(0, r * (style === 'thick-jaw' ? 0.5 : 0.35), r * 0.35, r * 0.12);
+  ctx.stroke();
+  if (style === 'thick-jaw') {
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.28, r * 0.38);
+    ctx.lineTo(r * 0.28, r * 0.32);
+    ctx.stroke();
+  }
+  if (style === 'glow') {
+    ctx.beginPath();
+    ctx.arc(0, r * 0.25, r * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+});
+
+registerPart('cracks', (ctx, size, params, phase) => {
+  const r = size / 2;
+  const density = Math.max(0, Number(params.density ?? 0.3));
+  ctx.save();
+  if (params.style === 'spots') {
+    const count = Math.max(1, Math.round(density * 10));
+    ctx.fillStyle = params.palette?.fill ?? PALETTE.obstacle;
+    for (let i = 0; i < count; i++) {
+      const angle = (i + 1) * 2.399963229728653;
+      const distance = r * (0.2 + ((i * 37) % 10) / 10 * 0.52);
+      ctx.beginPath();
+      ctx.arc(Math.cos(angle) * distance, Math.sin(angle) * distance, Math.max(1, r * 0.07), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+    return;
+  }
+  const count = Math.max(1, Math.round(density * 8));
+  const color = params.lit ? (params.palette?.glow ?? PALETTE.gold) : (params.palette?.stroke ?? PALETTE.neon);
+  ctx.strokeStyle = color;
+  ctx.shadowColor = params.lit ? color : 'transparent';
+  ctx.shadowBlur = params.lit ? 6 + 4 * Math.sin(phase) : 0;
+  ctx.globalAlpha *= params.lit ? 0.8 + 0.2 * Math.max(0, Math.min(1, params.fuseProgress ?? 0)) : 0.7;
+  ctx.lineWidth = Math.max(1, r * 0.045);
+  for (let i = 0; i < count; i++) {
+    const angle = -1.3 + (i / count) * 2.6;
+    const sx = Math.cos(angle) * r * 0.18;
+    const sy = Math.sin(angle) * r * 0.18;
+    const ex = Math.cos(angle) * r * 0.72;
+    const ey = Math.sin(angle) * r * 0.72;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo((sx + ex) / 2 + Math.sin(phase + i) * r * 0.08, (sy + ey) / 2);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
+  }
+  ctx.restore();
+});
+
+registerPart('trail', (ctx, size, params, phase) => {
+  if (params.style !== 'speed') return;
+  const r = size / 2;
+  ctx.save();
+  ctx.strokeStyle = params.palette?.glow ?? PALETTE.gold;
+  ctx.lineWidth = Math.max(1, r * 0.06);
+  ctx.globalAlpha *= 0.3;
+  for (let i = 1; i <= 3; i++) {
+    const y = Math.sin(phase * 1.7 + i) * r * 0.08;
+    const endX = -r * (0.65 + i * 0.22);
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.25, y);
+    ctx.lineTo(endX, y);
+    ctx.stroke();
+  }
+  ctx.restore();
+});
+
+registerPart('spikes', (ctx, size, params, phase) => {
+  const r = size / 2;
+  const style = params.style ?? 'rim';
+  const count = Math.max(1, Math.trunc(params.count ?? (style === 'multi' ? 10 : 6)));
+  const color = params.lit ? (params.palette?.glow ?? PALETTE.gold) : (params.palette?.stroke ?? PALETTE.gold);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = Math.max(1, r * 0.045);
+  if (style === 'sparks') {
+    for (let i = 0; i < count; i++) {
+      const angle = -Math.PI / 2 + (i - (count - 1) / 2) * 0.24 + Math.sin(phase + i) * 0.04;
+      const inner = r * 0.82;
+      const outer = r * (1.12 + 0.08 * Math.sin(phase * 2 + i));
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+      ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+      ctx.stroke();
+    }
+  } else {
+    const outer = style === 'multi' ? r * 1.2 : r * 1.14;
+    for (let i = 0; i < count; i++) {
+      const angle = phase * 0.03 + (i / count) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * r * 0.84, Math.sin(angle) * r * 0.84);
+      ctx.lineTo(Math.cos(angle) * outer, Math.sin(angle) * outer);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+});
+
 export function drawVisual(ctx, id, x, y, size, options = {}) {
   const settings = options ?? {};
+  if (settings.visual) {
+    drawMonsterComposite(ctx, x, y, size, settings.visual, settings);
+    return true;
+  }
   const shape = SHAPES[id];
   if (shape) {
     paintPath(ctx, shape, x, y, size, settings);

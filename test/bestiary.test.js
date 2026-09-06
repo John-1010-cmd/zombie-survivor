@@ -1,26 +1,64 @@
 // test/bestiary.test.js —— 图鉴数据完整性（设计 §4.1/§5 字段契约）
-import { test } from 'node:test';
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MONSTERS, MAX_ZOMBIE_R, playableMonsters } from '../src/config/bestiary/monsters.js';
 import { DIFFICULTY_TIERS } from '../src/config/difficulty.js';
 import { WEAPONS, SPECIAL_STATS } from '../src/config/bestiary/weapons.js';
 import { weaponUpgradePrice } from '../src/config/economy.js';
 import { monsterView, weaponView } from '../src/ui/bestiary.js';
-import { SHAPES } from '../src/entities/render.js';
+import { PARTS, SHAPES, renderZombie } from '../src/entities/render.js';
+import { createZombie } from '../src/entities/zombie.js';
+import { PALETTE } from '../src/config/palette.js';
 
-test('怪物清单 5 条：normal/fast/tank/boss/exploder，字段契约齐全', () => {
+test('怪物清单 5 条：组合式 visual body/palette/parts 完整，逻辑字段保留', () => {
   assert.deepEqual(Object.keys(MONSTERS).sort(), ['boss', 'exploder', 'fast', 'normal', 'tank']);
+  const expectedBodies = {
+    normal: 'circle', fast: 'triangle', tank: 'hexagon',
+    exploder: 'diamond', boss: 'pentagon',
+  };
   for (const m of Object.values(MONSTERS)) {
     for (const f of ['hp', 'speed', 'damage', 'coin', 'radius', 'cost'])
       assert.ok(m[f] > 0, `${m.id}.${f} 应为正数`);
     assert.ok(m.knockbackResist >= 0 && m.knockbackResist < 1, `${m.id}.knockbackResist`);
     assert.ok(typeof m.name === 'string' && m.name, `${m.id} 缺名称`);
     assert.ok(typeof m.desc === 'string' && m.desc, `${m.id} 缺图鉴描述`);
-    assert.ok(m.visual && typeof m.visual.shape === 'string' && typeof m.visual.color === 'string',
-      `${m.id} 缺 visual.shape/color`);
-    assert.ok(m.behavior === null || typeof m.behavior === 'string', `${m.id}.behavior`);
+    assert.equal(m.visual.body, expectedBodies[m.id], `${m.id}.visual.body`);
+    assert.ok(Number.isFinite(m.visual.scale) && m.visual.scale > 0, `${m.id}.visual.scale`);
+    assert.deepEqual(Object.keys(m.visual.palette).sort(), ['fill', 'glow', 'stroke']);
+    for (const [slot, token] of Object.entries(m.visual.palette))
+      assert.equal(typeof PALETTE[token], 'string', `${m.id}.visual.palette.${slot}=${token} 未在 PALETTE 注册`);
+    assert.ok(Array.isArray(m.visual.parts) && m.visual.parts.length > 0, `${m.id}.visual.parts`);
+    assert.ok(SHAPES[m.visual.body], `${m.id}.visual.body=${m.visual.body} 未注册`);
+    for (const part of m.visual.parts)
+      assert.ok(PARTS[part.type], `${m.id}.visual.parts.${part.type} 未注册`);
+    assert.equal(m.behavior === null || typeof m.behavior === 'string', true);
     assert.equal(m.id in MONSTERS && MONSTERS[m.id] === m, true);
   }
+});
+
+test('五种怪物的组合部件符合 §7 轮廓约定，自爆 cracks 密度为 0.3', () => {
+  assert.deepEqual(MONSTERS.normal.visual.parts, [
+    { type: 'eyes', style: 'angry', count: 2 },
+    { type: 'mouth', style: 'crooked' },
+    { type: 'cracks', style: 'spots', density: 0.2 },
+  ]);
+  assert.deepEqual(MONSTERS.fast.visual.parts, [
+    { type: 'eyes', style: 'narrow', count: 2 },
+    { type: 'trail', style: 'speed' },
+  ]);
+  assert.deepEqual(MONSTERS.tank.visual.parts, [
+    { type: 'spikes', style: 'rim', count: 6 },
+    { type: 'mouth', style: 'thick-jaw' },
+  ]);
+  assert.deepEqual(MONSTERS.exploder.visual.parts, [
+    { type: 'cracks', style: 'fuse', density: 0.3 },
+    { type: 'spikes', style: 'sparks', count: 4 },
+  ]);
+  assert.deepEqual(MONSTERS.boss.visual.parts, [
+    { type: 'spikes', style: 'multi', count: 10 },
+    { type: 'eyes', style: 'wide', count: 3 },
+    { type: 'mouth', style: 'glow' },
+  ]);
 });
 
 test('迁移数值与旧版一致（normal/fast/tank/boss）', () => {
@@ -122,10 +160,67 @@ test('武器条目：全部可见，携带局外等级与下一级提升', () =>
   assert.equal(maxed.maxed, true);
 });
 
-// —— 形状注册表（设计 §9.1）：图鉴 visual.shape 必须已注册（只断言键存在，不测绘制）——
-test('每个怪物的 visual.shape 都已注册画法', () => {
-  for (const m of Object.values(MONSTERS))
-    assert.ok(SHAPES[m.visual.shape], `${m.id}.visual.shape=${m.visual.shape} 未在 render.js 注册`);
-  // 五种形状齐全
-  assert.deepEqual(Object.keys(SHAPES).sort(), ['circle', 'diamond', 'hexagon', 'pentagon', 'triangle']);
+function mockCtx() {
+  const calls = [];
+  return {
+    calls,
+    globalAlpha: 1,
+    lineWidth: 1,
+    shadowBlur: 0,
+    save() { calls.push('save'); },
+    restore() { calls.push('restore'); },
+    translate() { calls.push('translate'); },
+    rotate() { calls.push('rotate'); },
+    beginPath() { calls.push('beginPath'); },
+    closePath() { calls.push('closePath'); },
+    moveTo() { calls.push('moveTo'); },
+    lineTo() { calls.push('lineTo'); },
+    quadraticCurveTo() { calls.push('quadraticCurveTo'); },
+    arc() { calls.push('arc'); },
+    ellipse() { calls.push('ellipse'); },
+    fill() { calls.push('fill'); },
+    stroke() { calls.push('stroke'); },
+    fillRect() { calls.push('fillRect'); },
+    clearRect() { calls.push('clearRect'); },
+    drawImage() { calls.push('drawImage'); },
+    setLineDash() { calls.push('setLineDash'); },
+  };
+}
+
+test('renderZombie 使用组合 visual，保留引信 lit、受击闪白与血条绘制', () => {
+  const z = createZombie('exploder', 120, 80);
+  z.fuse = 0.6;
+  z.hitFlash = 0.05;
+  z.hp = z.maxHp / 2;
+  const ctx = mockCtx();
+  assert.doesNotThrow(() => renderZombie(ctx, z, 1.25));
+  assert.ok(ctx.calls.includes('fill'), '组合 body/parts 应填充');
+  assert.ok(ctx.calls.includes('stroke'), '组合 body/parts 应描边');
+  assert.ok(ctx.calls.includes('fillRect'), '受伤后血条应保留');
+  assert.equal(z.alive, true);
+  assert.equal(z.hp, z.maxHp / 2);
+});
+
+test('createZombie 为实体生成稳定视觉相位，不改变数值字段', () => {
+  const first = createZombie('normal', 10, 20);
+  const sameSeed = createZombie('normal', 10, 20);
+  const otherSeed = createZombie('normal', 300, 400);
+  assert.equal(first.visualPhase, sameSeed.visualPhase);
+  assert.notEqual(first.visualPhase, otherSeed.visualPhase);
+  assert.ok(Number.isFinite(first.visualPhase));
+  assert.equal(first.hp, 30);
+  assert.equal(first.speed, 70);
+  assert.equal(first.damage, 8);
+});
+
+test('每个怪物的 visual.body 与 visual.parts[].type 都已注册', () => {
+  for (const m of Object.values(MONSTERS)) {
+    assert.ok(SHAPES[m.visual.body], `${m.id}.visual.body=${m.visual.body} 未注册`);
+    for (const part of m.visual.parts)
+      assert.ok(PARTS[part.type], `${m.id}.visual.parts[].type=${part.type} 未注册`);
+  }
+  for (const id of ['circle', 'triangle', 'hexagon', 'pentagon', 'diamond'])
+    assert.ok(SHAPES[id], `${id} 基础形状缺失`);
+  for (const id of ['eyes', 'mouth', 'cracks', 'trail', 'spikes'])
+    assert.ok(PARTS[id], `${id} 怪物部件缺失`);
 });
