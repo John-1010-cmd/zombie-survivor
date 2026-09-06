@@ -11,6 +11,7 @@ import { showDev } from './ui/dev.js';
 import { showLevels } from './ui/levels.js';
 import { showUpgrades } from './ui/upgrades.js';
 import { showBestiary } from './ui/bestiary.js';
+import { showSkins } from './ui/skins.js';
 import { loadMeta, saveMeta, addGold, recordAdventureResult } from './core/meta.js';
 import { ADVENTURE_LEVELS, adventureLevelById, adventureLevelIndex, clearGoldReward, failGoldReward } from './config/adventure.js';
 import { initPalette } from './config/palette.js';
@@ -26,6 +27,7 @@ const devEl = document.getElementById('dev');
 const levelsEl = document.getElementById('levels');
 const bestiaryEl = document.getElementById('bestiary');
 const upgradesEl = document.getElementById('upgrades');
+const skinsEl = document.getElementById('skins');
 
 initPalette();
 const engine = createEngine(canvas);
@@ -156,6 +158,11 @@ function showBestiaryScreen() {
   currentScene = null;
   showBestiary(bestiaryEl, meta, showMenuScreen);
 }
+function showSkinsScreen() {
+  hideOverlays();
+  currentScene = null;
+  showSkins(skinsEl, meta, showMenuScreen, () => saveMeta(meta));
+}
 
 function showMenuScreen() {
   hideOverlays();
@@ -165,6 +172,7 @@ function showMenuScreen() {
     onEndless: () => startGame('endless'),
     onBestiary: showBestiaryScreen,
     onUpgrades: showUpgradesScreen,
+    onSkins: showSkinsScreen,
   });
 }
 
