@@ -18,7 +18,7 @@ import { createInventory, addItem, useItem } from './systems/inventory.js';
 import { catalogFor, buy } from './systems/shop.js';
 import { createAux, spawnAuxBodies, updateAuxBodies, AUX_CONFIG } from './entities/companions.js';
 import { createTurret, updateTurret, TURRET_VISUAL_ID } from './entities/turret.js';
-import { createTeslaBall, updateTeslaBall } from './entities/teslaball.js';
+import { createTeslaBall, updateTeslaBall, renderTeslaBall } from './entities/teslaball.js';
 import { createWallSegment, WALL_VISUAL_ID } from './entities/wall.js';
 import { drawVisual } from './core/visuals.js';
 import { ITEMS } from './config/items.js';
@@ -653,7 +653,7 @@ export function createGameScene(deps) {
       });
     }
 
-    if (scene.helicopter) renderHelicopter(ctx, scene.helicopter);
+    if (scene.helicopter) renderHelicopter(ctx, scene.helicopter, scene.time);
 
     // 玩家
     if (player.invuln > 0) ctx.globalAlpha = 0.45 + 0.35 * Math.sin(scene.time * 24);
@@ -672,22 +672,7 @@ export function createGameScene(deps) {
     // 弹道：visual 驱动的几何特效 + 渐隐拖尾（设计 §9.2，entities/render.js）
     renderProjectiles(ctx, projectiles);
 
-    // 电磁球（迭代 05）：青色电球 + 电弧
-    for (const b of scene.teslaBalls) {
-      ctx.save();
-      ctx.globalAlpha = 0.75;
-      ctx.fillStyle = PALETTE.neon;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 0.5;
-      ctx.strokeStyle = PALETTE.neon;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r + 5 + Math.sin(scene.time * 20) * 2, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
+    for (const b of scene.teslaBalls) renderTeslaBall(ctx, b, scene.time);
 
     renderParticles(ctx, scene.particles);
     renderFloaters(ctx, scene.floaters);

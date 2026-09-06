@@ -2,13 +2,64 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createZombie } from '../src/entities/zombie.js';
-import { createTeslaBall, updateTeslaBall } from '../src/entities/teslaball.js';
+import {
+  createTeslaBall, updateTeslaBall, renderTeslaBall,
+  MINE_VISUAL_ID, TESLA_BALL_VISUAL_ID,
+} from '../src/entities/teslaball.js';
+import { drawVisual } from '../src/core/visuals.js';
 
 const T1 = { hpMult: 1, speedMult: 1 };
 
-test('createTeslaBall 字段齐全：r12 / tick 0.25 / life 2.5 / alive（迭代 06：球径 22→12）', () => {
+function fakeCtx() {
+  return {
+    arcCount: 0,
+    strokeCount: 0,
+    fillCount: 0,
+    fillRectCount: 0,
+    save() {},
+    restore() {},
+    translate() {},
+    rotate() {},
+    scale() {},
+    beginPath() {},
+    closePath() {},
+    moveTo() {},
+    lineTo() {},
+    arc() { this.arcCount++; },
+    fill() { this.fillCount++; },
+    stroke() { this.strokeCount++; },
+    fillRect() { this.fillRectCount++; },
+    strokeRect() { this.strokeCount++; },
+  };
+}
+
+test('createTeslaBall 字段齐全：r12 / tick 0.25 / life 2.5 / alive / visualId', () => {
   const b = createTeslaBall(10, 20, 30, 40, 50);
-  assert.deepEqual(b, { x: 10, y: 20, vx: 30, vy: 40, r: 12, damage: 50, tickT: 0.25, life: 2.5, alive: true });
+  assert.deepEqual(b, {
+    x: 10, y: 20, vx: 30, vy: 40, r: 12, damage: 50,
+    tickT: 0.25, life: 2.5, alive: true, visualId: 'teslaBall',
+  });
+});
+
+test('mine 与 teslaBall visual id 已注册，组合视觉绘制不发出未知 id 警告', () => {
+  assert.equal(MINE_VISUAL_ID, 'mine');
+  assert.equal(TESLA_BALL_VISUAL_ID, 'teslaBall');
+  const ctx = fakeCtx();
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => warnings.push(args);
+  try {
+    renderTeslaBall(ctx, createTeslaBall(0, 0, 0, 0, 10), 0);
+    drawVisual(ctx, MINE_VISUAL_ID, 0, 0, 48, {
+      params: { range: 80 },
+      phase: 0,
+    });
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert.equal(warnings.length, 0);
+  assert.ok(ctx.arcCount >= 3);
+  assert.ok(ctx.strokeCount >= 2);
 });
 
 test('沿 vx/vy 移动 speed*dt，返回存活', () => {

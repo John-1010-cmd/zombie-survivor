@@ -1,13 +1,67 @@
 // src/entities/helicopter.js —— 坚守模式救援直升机（降落/登机状态机）。纯逻辑模块，无 DOM 依赖。
-const LANDING_TIME = 3;   // 降落耗时 s
-const BOARDING_TIME = 3;  // 登机耗时 s
+import { drawVisual, registerPart } from '../core/visuals.js';
+import { PALETTE } from '../config/palette.js';
+
+const LANDING_TIME = 3;
+const BOARDING_TIME = 3;
+export const HELICOPTER_VISUAL_ID = 'helicopter';
+
+registerPart(HELICOPTER_VISUAL_ID, (ctx, size, params = {}, phase = 0) => {
+  const r = size * 0.5;
+  const progress = Math.max(0, Math.min(1, params.progress ?? 0));
+  ctx.save();
+
+  ctx.save();
+  ctx.rotate(phase * 5);
+  ctx.fillStyle = PALETTE.obstacle;
+  ctx.fillRect(-r * 1.42, -r * 0.06, r * 2.84, r * 0.12);
+  ctx.strokeStyle = PALETTE.neonDim;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-r * 1.42, -r * 0.06, r * 2.84, r * 0.12);
+  ctx.restore();
+
+  ctx.fillStyle = PALETTE.neonDim;
+  ctx.fillRect(-r * 0.92, -r * 0.13, r * 0.50, r * 0.26);
+  ctx.fillStyle = PALETTE.panel;
+  ctx.shadowColor = PALETTE.neon;
+  ctx.shadowBlur = 9;
+  ctx.beginPath();
+  ctx.arc(0, 0, r * 0.58, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.neon;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = PALETTE.neon;
+  ctx.beginPath();
+  ctx.arc(r * 0.18, -r * 0.04, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = PALETTE.obstacle;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-r * 0.30, r * 0.48);
+  ctx.lineTo(-r * 0.46, r * 0.76);
+  ctx.moveTo(r * 0.30, r * 0.48);
+  ctx.lineTo(r * 0.46, r * 0.76);
+  ctx.stroke();
+
+  if (params.state === 'boarding') {
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = PALETTE.gold;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(0, 0, r + 12, -Math.PI / 2, -Math.PI / 2 + progress * Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+});
 
 export function createHelicopter(x, y) {
-  return { x, y, r: 60, state: 'landing', t: 0 };
+  return { x, y, r: 60, state: 'landing', t: 0, visualId: HELICOPTER_VISUAL_ID };
 }
 
-// 状态机：landing 3s → waiting；waiting 中玩家圆心距 < r → boarding（计 3s，中途离开重置）；
-// boarding 满 3s → 返回 'victory' 且 state='done'。其余时刻返回 'none'。
 export function updateHelicopter(h, player, dt) {
   if (h.state === 'landing') {
     h.t += dt;
@@ -26,48 +80,15 @@ export function updateHelicopter(h, player, dt) {
     if (h.t >= BOARDING_TIME) { h.state = 'done'; return 'victory'; }
     return 'none';
   }
-  return 'none'; // done
+  return 'none';
 }
 
-// 几何绘制：机身 + 旋翼旋转 + 登机进度弧。仅函数体内使用 ctx。
-export function renderHelicopter(ctx, h) {
-  ctx.save();
-  ctx.translate(h.x, h.y);
-  // 旋翼（以 t 驱动旋转；landing/boarding 期间持续转动）
-  ctx.save();
-  ctx.rotate(h.t * 15);
-  ctx.fillStyle = '#2b2b2b';
-  ctx.fillRect(-h.r * 1.4, -6, h.r * 2.8, 12);
-  ctx.restore();
-  // 机尾
-  ctx.fillStyle = '#4a5d6e';
-  ctx.fillRect(-h.r * 0.9, -10, h.r * 0.5, 20);
-  // 机身
-  ctx.fillStyle = '#3c8a5e';
-  ctx.beginPath();
-  ctx.arc(0, 0, h.r * 0.55, 0, Math.PI * 2);
-  ctx.fill();
-  // 座舱
-  ctx.fillStyle = '#b8e0f0';
-  ctx.beginPath();
-  ctx.arc(h.r * 0.18, 0, h.r * 0.22, 0, Math.PI * 2);
-  ctx.fill();
-  // 着陆架
-  ctx.strokeStyle = '#2b2b2b';
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.moveTo(-h.r * 0.3, h.r * 0.5);
-  ctx.lineTo(-h.r * 0.45, h.r * 0.75);
-  ctx.moveTo(h.r * 0.3, h.r * 0.5);
-  ctx.lineTo(h.r * 0.45, h.r * 0.75);
-  ctx.stroke();
-  // 登机进度弧（boarding 中绘制，圆心=玩家进入点，用 h.t 表达进度）
-  if (h.state === 'boarding') {
-    ctx.strokeStyle = '#ffe14d';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(0, 0, h.r + 12, -Math.PI / 2, -Math.PI / 2 + (h.t / BOARDING_TIME) * Math.PI * 2);
-    ctx.stroke();
-  }
-  ctx.restore();
+export function renderHelicopter(ctx, h, phase = h.t) {
+  drawVisual(ctx, h.visualId || HELICOPTER_VISUAL_ID, h.x, h.y, h.r * 2, {
+    params: {
+      state: h.state,
+      progress: h.state === 'boarding' ? h.t / BOARDING_TIME : 0,
+    },
+    phase,
+  });
 }
