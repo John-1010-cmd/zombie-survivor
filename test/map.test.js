@@ -7,6 +7,7 @@ import {
   generateMap, MAP_SIZE, hashId, obstacleVariant,
   ROCK_VARIANT_COUNT, RECT_VARIANT_COUNT, obstacleVisualId,
   SHOP_INTERACT_R, shopPulseState, SUPPLY_STATION_VISUAL_ID, SHOP_LABEL,
+  TERRAIN_TILE_SIZE, createTerrainRenderer,
 } from '../src/systems/map.js';
 
 const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
@@ -149,4 +150,61 @@ test('补给站交互光环只改变 alpha/scale，90px 边界仍为严格小于
   assert.ok(Math.abs(peak.alpha - 0.34) < 1e-12);
   assert.ok(Math.abs(peak.scale - 1.05) < 1e-12);
   assert.notEqual(active.scale, peak.scale);
+});
+
+function fakeTileFactory(counter) {
+  return size => {
+    counter.count++;
+    const tileCtx = {
+      fillStyle: '',
+      globalAlpha: 1,
+      fillRect() {},
+    };
+    return {
+      width: size,
+      height: size,
+      getContext: () => tileCtx,
+    };
+  };
+}
+
+const TERRAIN_PALETTE = {
+  ground: '#101810',
+  obstacle: '#303840',
+  neon: '#5eff8a',
+  neonDim: '#2a4a3a',
+};
+
+test('地形 tile 在初始化后只生成一次，draw 按可见范围平铺且不逐帧重建', () => {
+  assert.equal(TERRAIN_TILE_SIZE, 128);
+  const counter = { count: 0 };
+  const renderer = createTerrainRenderer({
+    palette: TERRAIN_PALETTE,
+    canvasFactory: fakeTileFactory(counter),
+  });
+  const target = { drawImageCount: 0, drawImage() { this.drawImageCount++; } };
+  const viewport = { x: 0, y: 0, width: 256, height: 128 };
+  renderer.draw(target, viewport);
+  renderer.draw(target, viewport);
+  assert.equal(counter.count, 1);
+  assert.equal(renderer.getBuildCount(), 1);
+  assert.equal(target.drawImageCount, 4);
+  assert.equal(renderer.getTile().width, TERRAIN_TILE_SIZE);
+});
+
+test('地形 palette 变化只触发一次重建，连续 draw 不重复生成', () => {
+  const counter = { count: 0 };
+  const palette = { ...TERRAIN_PALETTE };
+  const renderer = createTerrainRenderer({ palette, canvasFactory: fakeTileFactory(counter) });
+  const target = { drawImage() {} };
+  const viewport = { x: 64, y: 64, width: 64, height: 64 };
+  renderer.draw(target, viewport);
+  palette.ground = '#182018';
+  renderer.draw(target, viewport);
+  renderer.draw(target, viewport);
+  assert.equal(counter.count, 2);
+  assert.equal(renderer.getBuildCount(), 2);
+  renderer.invalidate();
+  renderer.draw(target, viewport);
+  assert.equal(counter.count, 3);
 });
