@@ -12,6 +12,7 @@ import { showLevels } from './ui/levels.js';
 import { showUpgrades } from './ui/upgrades.js';
 import { showBestiary } from './ui/bestiary.js';
 import { showSkins } from './ui/skins.js';
+import { hideTooltip } from './ui/tooltip.js';
 import { loadMeta, saveMeta, addGold, recordAdventureResult } from './core/meta.js';
 import { ADVENTURE_LEVELS, adventureLevelById, adventureLevelIndex, clearGoldReward, failGoldReward } from './config/adventure.js';
 import { initPalette } from './config/palette.js';
@@ -47,10 +48,12 @@ const input = createInput({
 });
 
 function hideOverlays() {
+  hideTooltip();
   document.querySelectorAll('.overlay').forEach(el => el.classList.add('hidden'));
 }
 
 function onEsc() {
+  hideTooltip();
   // 开发者菜单打开时优先关闭；商店打开时次之；否则暂停菜单
   if (!devEl.classList.contains('hidden')) { closeDev(); return; }
   if (!shopEl.classList.contains('hidden')) { currentScene.togglePause(); return; }
@@ -104,6 +107,7 @@ function toggleDev() {
 }
 
 function closeDev() {
+  hideTooltip();
   devEl.classList.add('hidden');
   currentScene.paused = false;
 }

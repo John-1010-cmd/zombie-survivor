@@ -203,9 +203,38 @@ export function shopPulseState(timeSec, distance, interactR = SHOP_INTERACT_R) {
   };
 }
 
-registerPart(SUPPLY_STATION_VISUAL_ID, (ctx, size, params = {}) => {
+function drawOctagonPath(ctx, cx, cy, w, h, c) {
+  ctx.beginPath();
+  ctx.moveTo(cx - w + c, cy - h);
+  ctx.lineTo(cx + w - c, cy - h);
+  ctx.lineTo(cx + w, cy - h + c);
+  ctx.lineTo(cx + w, cy + h - c);
+  ctx.lineTo(cx + w - c, cy + h);
+  ctx.lineTo(cx - w + c, cy + h);
+  ctx.lineTo(cx - w, cy + h - c);
+  ctx.lineTo(cx - w, cy - h + c);
+  ctx.closePath();
+}
+
+function drawBoxPath(ctx, x, y, w, h) {
+  ctx.beginPath();
+  if (typeof ctx.rect === 'function') {
+    ctx.rect(x, y, w, h);
+  } else {
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.closePath();
+  }
+}
+
+registerPart(SUPPLY_STATION_VISUAL_ID, (ctx, size, params = {}, phase = 0) => {
   const r = size * 0.5;
   const active = params.active === true;
+  const time = Number(params.timeSec ?? phase ?? 0);
+
+  // 1. 交互半径圈（保持原有半径与脉冲动画不变）
   const ringAlpha = active ? params.alpha ?? 0.2 : 0.08;
   const ringScale = active ? params.scale ?? 1 : 1;
   const interactR = params.interactR ?? SHOP_INTERACT_R;
@@ -218,35 +247,283 @@ registerPart(SUPPLY_STATION_VISUAL_ID, (ctx, size, params = {}) => {
   ctx.beginPath();
   ctx.arc(0, 0, interactR * ringScale, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.globalAlpha = 1;
+  ctx.restore();
 
-  ctx.fillStyle = PALETTE.panel;
-  ctx.fillRect(-r * 0.62, -r * 0.12, r * 1.24, r * 0.66);
-  ctx.fillStyle = PALETTE.neonDim;
-  ctx.beginPath();
-  ctx.moveTo(-r * 0.76, -r * 0.12);
-  ctx.lineTo(0, -r * 0.66);
-  ctx.lineTo(r * 0.76, -r * 0.12);
-  ctx.closePath();
+  ctx.save();
+
+  // 2. 地面接触阴影（微斜视投影）
+  const shadowW = r * 0.86;
+  const shadowH = r * 0.70;
+  const shadowY = r * 0.08;
+  const sc = r * 0.22;
+  ctx.save();
+  ctx.fillStyle = PALETTE.bg;
+  ctx.globalAlpha = 0.5;
+  drawOctagonPath(ctx, 0, shadowY, shadowW, shadowH, sc);
   ctx.fill();
-  ctx.shadowColor = PALETTE.neon;
-  ctx.shadowBlur = 7;
-  ctx.strokeStyle = PALETTE.neon;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-  ctx.strokeRect(-r * 0.62, -r * 0.12, r * 1.24, r * 0.66);
-  ctx.shadowBlur = 0;
+  ctx.restore();
 
-  ctx.fillStyle = PALETTE.gold;
-  ctx.fillRect(-r * 0.22, -r * 0.48, r * 0.44, r * 0.24);
+  // 3. 几何基座平台（八角形切角重工平台：暗色填充 + 克制霓虹描边）
+  const pw = r * 0.82;
+  const ph = r * 0.66;
+  const py = r * 0.04;
+  const pc = r * 0.20;
+  drawOctagonPath(ctx, 0, py, pw, ph, pc);
+  ctx.fillStyle = PALETTE.panel;
+  ctx.fill();
+  ctx.save();
+  ctx.strokeStyle = active ? PALETTE.neon : PALETTE.boundary;
+  ctx.shadowColor = PALETTE.neon;
+  ctx.shadowBlur = active ? 8 : 2;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // 基座内圈科技防滑装甲嵌线
+  const ipw = pw - r * 0.08;
+  const iph = ph - r * 0.08;
+  const ipc = pc - r * 0.03;
+  drawOctagonPath(ctx, 0, py, ipw, iph, ipc);
+  ctx.strokeStyle = PALETTE.obstacle;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 基座四角防撞地脚/固定螺栓
+  ctx.fillStyle = PALETTE.textDim;
+  const boltOffset = r * 0.62;
+  const boltR = Math.max(1, r * 0.035);
+  const bolts = [
+    [-boltOffset, py - ph + pc * 0.6],
+    [boltOffset, py - ph + pc * 0.6],
+    [boltOffset, py + ph - pc * 0.6],
+    [-boltOffset, py + ph - pc * 0.6],
+  ];
+  for (const [bx, by] of bolts) {
+    ctx.beginPath();
+    ctx.arc(bx, by, boltR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 4. 主体建筑块（俯视/微斜视碉堡结构）
+  const bw = r * 0.52;
+  // 前立面（提供厚度感与正面阴影）
+  drawBoxPath(ctx, -bw, py - r * 0.04, bw * 2, r * 0.40);
+  ctx.fillStyle = PALETTE.hudPanel;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.boundary;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 主体顶盖面（装甲板灰色金属受光面）
+  ctx.beginPath();
+  ctx.moveTo(-bw, py - r * 0.04);
+  ctx.lineTo(-bw + r * 0.06, py - r * 0.48);
+  ctx.lineTo(bw - r * 0.06, py - r * 0.48);
+  ctx.lineTo(bw, py - r * 0.04);
+  ctx.closePath();
+  ctx.fillStyle = PALETTE.obstacle;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.textDim;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // 顶盖中心接缝装甲刻线
   ctx.strokeStyle = PALETTE.panel;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(0, py - r * 0.46);
+  ctx.lineTo(0, py - r * 0.06);
+  ctx.moveTo(-bw + r * 0.16, py - r * 0.26);
+  ctx.lineTo(bw - r * 0.16, py - r * 0.26);
+  ctx.stroke();
+
+  // 5. 屋顶前伸悬臂雨棚（遮阳檐棚，边缘带导光条）
+  const awW = r * 0.44;
+  const awLipW = r * 0.40;
+  const awTopY = py - r * 0.06;
+  const awBotY = py + r * 0.14;
+  ctx.beginPath();
+  ctx.moveTo(-awW, awTopY);
+  ctx.lineTo(awW, awTopY);
+  ctx.lineTo(awLipW, awBotY);
+  ctx.lineTo(-awLipW, awBotY);
+  ctx.closePath();
+  ctx.fillStyle = PALETTE.panel;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.neonDim;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+
+  // 雨棚前沿导光条（激活时高亮，闲置时金黄状态标）
+  ctx.save();
+  ctx.strokeStyle = active ? PALETTE.neon : PALETTE.gold;
+  ctx.shadowColor = active ? PALETTE.neon : PALETTE.gold;
+  ctx.shadowBlur = active ? 6 : 2;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-r * 0.11, -r * 0.44);
-  ctx.lineTo(-r * 0.11, -r * 0.28);
-  ctx.moveTo(r * 0.11, -r * 0.44);
-  ctx.lineTo(r * 0.11, -r * 0.28);
+  ctx.moveTo(-awLipW + r * 0.02, awBotY);
+  ctx.lineTo(awLipW - r * 0.02, awBotY);
   ctx.stroke();
+  ctx.restore();
+
+  // 6. 门口与服务台高光（内凹服务台 + 呼吸交互光带）
+  const doorW = r * 0.22;
+  const doorTop = py + r * 0.14;
+  const doorH = r * 0.22;
+  // 门洞内凹深色阴影
+  drawBoxPath(ctx, -doorW, doorTop, doorW * 2, doorH);
+  ctx.fillStyle = PALETTE.bg;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.neonDim;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 柜台面
+  drawBoxPath(ctx, -doorW - r * 0.02, doorTop + doorH - r * 0.06, (doorW + r * 0.02) * 2, r * 0.06);
+  ctx.fillStyle = PALETTE.obstacle;
+  ctx.fill();
+
+  // 服务台发光扫描光带（呼吸微动）
+  ctx.save();
+  const glowWave = (Math.sin(time * 3) + 1) * 0.5;
+  const termAlpha = active ? 0.9 + 0.1 * glowWave : 0.45 + 0.25 * glowWave;
+  ctx.globalAlpha = termAlpha;
+  ctx.fillStyle = active ? PALETTE.neon : PALETTE.neonDim;
+  ctx.shadowColor = PALETTE.neon;
+  ctx.shadowBlur = active ? 8 : 3;
+  drawBoxPath(ctx, -doorW + r * 0.04, doorTop + r * 0.04, (doorW - r * 0.04) * 2, r * 0.04);
+  ctx.fill();
+  // 门楣状态点
+  ctx.fillStyle = active ? PALETTE.neon : PALETTE.gold;
+  ctx.beginPath();
+  ctx.arc(0, doorTop + r * 0.015, Math.max(1, r * 0.025), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 7. 细节件：补给箱（右侧平台堆叠）
+  // 主补给箱（军规货柜，带加固绑带与金色锁扣）
+  const crX = r * 0.36;
+  const crY = py + r * 0.18;
+  const crW = r * 0.24;
+  const crH = r * 0.18;
+  drawBoxPath(ctx, crX, crY, crW, crH);
+  ctx.fillStyle = PALETTE.panel;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.textDim;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // 紧固十字带
+  ctx.strokeStyle = PALETTE.obstacle;
+  ctx.beginPath();
+  ctx.moveTo(crX + crW * 0.5, crY);
+  ctx.lineTo(crX + crW * 0.5, crY + crH);
+  ctx.moveTo(crX, crY + crH * 0.5);
+  ctx.lineTo(crX + crW, crY + crH * 0.5);
+  ctx.stroke();
+  // 金色物资锁扣
+  drawBoxPath(ctx, crX + crW * 0.5 - r * 0.03, crY + crH * 0.5 - r * 0.025, r * 0.06, r * 0.05);
+  ctx.fillStyle = PALETTE.gold;
+  ctx.fill();
+
+  // 副补给箱（前侧小型弹药盒）
+  const scX = r * 0.46;
+  const scY = py + r * 0.38;
+  const scW = r * 0.18;
+  const scH = r * 0.13;
+  drawBoxPath(ctx, scX, scY, scW, scH);
+  ctx.fillStyle = PALETTE.obstacle;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.neonDim;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // 8. 细节件：工业油桶/能量罐（左侧平台双桶组合）
+  // 主桶
+  const d1X = -r * 0.50;
+  const d1Y = py + r * 0.22;
+  const d1R = r * 0.11;
+  ctx.beginPath();
+  ctx.arc(d1X, d1Y, d1R, 0, Math.PI * 2);
+  ctx.fillStyle = PALETTE.obstacle;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.textDim;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  // 桶面同心圆与注油阀盖
+  ctx.beginPath();
+  ctx.arc(d1X, d1Y, d1R * 0.6, 0, Math.PI * 2);
+  ctx.strokeStyle = PALETTE.panel;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(d1X + d1R * 0.25, d1Y - d1R * 0.25, Math.max(1, r * 0.028), 0, Math.PI * 2);
+  ctx.fillStyle = PALETTE.gold;
+  ctx.fill();
+
+  // 副桶（斜置能量电池罐）
+  const d2X = -r * 0.40;
+  const d2Y = py + r * 0.38;
+  const d2R = r * 0.09;
+  ctx.beginPath();
+  ctx.arc(d2X, d2Y, d2R, 0, Math.PI * 2);
+  ctx.fillStyle = PALETTE.panel;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.boundary;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(d2X, d2Y, Math.max(1, r * 0.025), 0, Math.PI * 2);
+  ctx.fillStyle = PALETTE.neonDim;
+  ctx.fill();
+
+  // 9. 小型天线与呼吸信标灯（左后方通讯桅杆）
+  const antBaseX = -bw + r * 0.12;
+  const antBaseY = py - r * 0.44;
+  const antTipX = -bw - r * 0.02;
+  const antTipY = py - r * 0.70;
+  ctx.strokeStyle = PALETTE.textDim;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(antBaseX, antBaseY);
+  ctx.lineTo(antTipX, antTipY);
+  // 偶极子天线横向振子
+  const crossX = (antBaseX + antTipX) * 0.5;
+  const crossY = (antBaseY + antTipY) * 0.5;
+  ctx.moveTo(crossX - r * 0.06, crossY - r * 0.02);
+  ctx.lineTo(crossX + r * 0.06, crossY + r * 0.02);
+  ctx.stroke();
+
+  // 慢闪呼吸信标灯（通过 timeSec / phase 慢速呼吸闪烁）
+  const beaconWave = (Math.sin(time * 2.8) + 1) * 0.5;
+  const beaconAlpha = active ? 0.7 + 0.3 * beaconWave : 0.3 + 0.7 * beaconWave;
+  ctx.save();
+  ctx.globalAlpha = beaconAlpha;
+  ctx.fillStyle = active ? PALETTE.neon : PALETTE.gold;
+  ctx.shadowColor = active ? PALETTE.neon : PALETTE.gold;
+  ctx.shadowBlur = active ? 7 + 7 * beaconWave : 3 + 5 * beaconWave;
+  ctx.beginPath();
+  ctx.arc(antTipX, antTipY, Math.max(1.5, r * 0.055), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // 10. 右后方屋顶散热机组（科技感平衡）
+  const ventX = bw - r * 0.30;
+  const ventY = py - r * 0.44;
+  const ventW = r * 0.22;
+  const ventH = r * 0.15;
+  drawBoxPath(ctx, ventX, ventY, ventW, ventH);
+  ctx.fillStyle = PALETTE.panel;
+  ctx.fill();
+  ctx.strokeStyle = PALETTE.boundary;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.strokeStyle = PALETTE.neonDim;
+  ctx.beginPath();
+  ctx.moveTo(ventX + r * 0.03, ventY + ventH * 0.35);
+  ctx.lineTo(ventX + ventW - r * 0.03, ventY + ventH * 0.35);
+  ctx.moveTo(ventX + r * 0.03, ventY + ventH * 0.70);
+  ctx.lineTo(ventX + ventW - r * 0.03, ventY + ventH * 0.70);
+  ctx.stroke();
+
   ctx.restore();
 });
 
@@ -259,6 +536,7 @@ export function renderShop(ctx, shop, player, timeSec) {
       alpha: pulse.alpha,
       scale: pulse.scale,
       interactR: shop.interactR,
+      timeSec,
     },
     phase: timeSec,
   });

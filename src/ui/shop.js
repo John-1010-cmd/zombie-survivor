@@ -7,7 +7,7 @@ import { AUX_CONFIG } from '../entities/companions.js';
 import { AUX_MAX } from '../config/economy.js';
 import { catalogFor } from '../systems/shop.js';
 import { createIconCanvas } from './icon.js';
-import { attachTooltips } from './tooltip.js';
+import { attachTooltips, hideTooltip } from './tooltip.js';
 
 // 条目 → {title, desc, price, icon, value}（earlyTier 无 price）
 export function entryView(entry, game) {
@@ -91,6 +91,7 @@ function buildEntryEl(entry, game, handlers) {
 }
 
 export function showShop(rootEl, game, handlers, opts = {}) {
+  hideTooltip();
   const { onBuy, onEarlyTier, onClose } = handlers;
   const groups = catalogFor(game, game.tierRemaining, opts);
 

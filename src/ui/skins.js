@@ -3,6 +3,7 @@ import { SKINS } from '../config/skins.js';
 import { spendGold } from '../core/meta.js';
 import { ASSET_BY_ID } from '../config/assets.js';
 import { getVisualCanvas } from '../core/visuals.js';
+import { hideTooltip } from './tooltip.js';
 
 const DEFAULT_SKIN_ID = 'wastelandAdventurer';
 const GOLD_ICON_ID = 'icon.currency.gold';
@@ -85,6 +86,7 @@ export function showSkins(rootEl, meta, onBack, onSave = () => {}) {
   let message = '';
 
   const render = () => {
+    hideTooltip();
     const current = SKINS[previewId] || SKINS[DEFAULT_SKIN_ID];
     const currentView = skinView(current, meta);
     rootEl.innerHTML = `
@@ -143,6 +145,7 @@ export function showSkins(rootEl, meta, onBack, onSave = () => {}) {
     }
 
     rootEl.querySelector('#skins-back').addEventListener('click', () => {
+      hideTooltip();
       rootEl.classList.add('hidden');
       onBack();
     });

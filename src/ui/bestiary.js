@@ -5,6 +5,7 @@
 import { playableMonsters } from '../config/bestiary/monsters.js';
 import { WEAPONS } from '../config/bestiary/weapons.js';
 import { getVisualCanvas } from '../core/visuals.js';
+import { hideTooltip } from './tooltip.js';
 
 export const BESTIARY_VISUAL_SIZES = Object.freeze([24, 32, 48, 64]);
 const BESTIARY_VISUAL_SIZE = 48;
@@ -52,6 +53,7 @@ function mountVisualSlots(rootEl, slots) {
 
 export function showBestiary(rootEl, meta, onBack) {
   const render = tab => {
+    hideTooltip();
     const monsterCards = playableMonsters().map(m => monsterView(m, meta.bestiaryKills));
     const weaponCards = Object.values(WEAPONS).map(w => weaponView(w, meta.weaponLevels));
     const slots = [];
@@ -93,6 +95,7 @@ export function showBestiary(rootEl, meta, onBack) {
     rootEl.querySelector('#bestiary-tab-monsters').addEventListener('click', () => render('monsters'));
     rootEl.querySelector('#bestiary-tab-weapons').addEventListener('click', () => render('weapons'));
     rootEl.querySelector('#bestiary-back').addEventListener('click', () => {
+      hideTooltip();
       rootEl.classList.add('hidden');
       onBack();
     });

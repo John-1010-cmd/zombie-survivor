@@ -172,6 +172,25 @@ function resolveMonsterColor(token, fallback) {
     : PALETTE[fallback];
 }
 
+function colorWithAlpha(color, alpha) {
+  if (typeof color !== 'string') return color;
+  const c = color.trim();
+  if (c.startsWith('#')) {
+    let r = 0, g = 0, b = 0;
+    if (c.length === 4) {
+      r = parseInt(c[1] + c[1], 16);
+      g = parseInt(c[2] + c[2], 16);
+      b = parseInt(c[3] + c[3], 16);
+    } else if (c.length >= 7) {
+      r = parseInt(c.slice(1, 3), 16);
+      g = parseInt(c.slice(3, 5), 16);
+      b = parseInt(c.slice(5, 7), 16);
+    }
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  return c;
+}
+
 function drawMonsterComposite(ctx, x, y, size, visual, options = {}) {
   const scale = Number.isFinite(visual.scale) && visual.scale > 0 ? visual.scale : 1;
   const drawSize = size * scale;
@@ -189,8 +208,8 @@ function drawMonsterComposite(ctx, x, y, size, visual, options = {}) {
   ctx.globalAlpha *= Number.isFinite(options.alpha) ? options.alpha : 1;
   ctx.fillStyle = options.fillStyle ?? colors.fill;
   ctx.strokeStyle = options.strokeStyle ?? colors.stroke;
-  ctx.shadowColor = options.shadowColor ?? colors.glow;
-  ctx.shadowBlur = options.shadowBlur ?? 8;
+  ctx.shadowColor = options.shadowColor ?? colorWithAlpha(colors.glow, 0.45);
+  ctx.shadowBlur = options.shadowBlur ?? 4;
   ctx.lineWidth = options.lineWidth ?? 2;
 
   (body || SHAPES.circle)(ctx, 0, 0, radius);
@@ -256,8 +275,8 @@ registerPart('mouth', (ctx, size, params) => {
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
   ctx.lineWidth = Math.max(1, r * (style === 'thick-jaw' ? 0.1 : 0.06));
-  ctx.shadowColor = style === 'glow' ? color : 'transparent';
-  ctx.shadowBlur = style === 'glow' ? r * 0.35 : 0;
+  ctx.shadowColor = style === 'glow' ? colorWithAlpha(color, 0.45) : 'transparent';
+  ctx.shadowBlur = style === 'glow' ? r * 0.18 : 0;
   ctx.beginPath();
   ctx.moveTo(-r * 0.35, r * 0.2);
   ctx.quadraticCurveTo(0, r * (style === 'thick-jaw' ? 0.5 : 0.35), r * 0.35, r * 0.12);
@@ -296,8 +315,8 @@ registerPart('cracks', (ctx, size, params, phase) => {
   const count = Math.max(1, Math.round(density * 8));
   const color = params.lit ? (params.palette?.glow ?? PALETTE.gold) : (params.palette?.stroke ?? PALETTE.neon);
   ctx.strokeStyle = color;
-  ctx.shadowColor = params.lit ? color : 'transparent';
-  ctx.shadowBlur = params.lit ? 6 + 4 * Math.sin(phase) : 0;
+  ctx.shadowColor = params.lit ? colorWithAlpha(color, 0.45) : 'transparent';
+  ctx.shadowBlur = params.lit ? 3 + 2 * Math.sin(phase) : 0;
   ctx.globalAlpha *= params.lit ? 0.8 + 0.2 * Math.max(0, Math.min(1, params.fuseProgress ?? 0)) : 0.7;
   ctx.lineWidth = Math.max(1, r * 0.045);
   for (let i = 0; i < count; i++) {

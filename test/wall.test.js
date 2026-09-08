@@ -114,7 +114,7 @@ test('围墙 visual 三档受损状态体现不同裂缝数量与透明度/线�
   assert.equal(strokeCountIntact, 3, '完好状态应无裂缝描边 (共3次stroke)');
   const alphaCallsIntact = ctxIntact.calls.filter(c => c.name === 'set:globalAlpha').map(c => c.args[0]);
   assert.ok(alphaCallsIntact.includes(1), '完好状态主体透明度应为 1');
-  assert.ok(alphaCallsIntact.includes(0.55), '完好状态发光透明度应为 0.55');
+  assert.ok(alphaCallsIntact.includes(0.28), '完好状态发光透明度应为 0.28');
 
   // 破损 (damaged, hp: 50/100): 3 条裂缝，stroke 共 3 + 3 = 6 次
   const ctxDamaged = mockContext();
@@ -126,7 +126,7 @@ test('围墙 visual 三档受损状态体现不同裂缝数量与透明度/线�
   assert.equal(strokeCountDamaged, 6, '破损状态应有3条裂缝描边 (共6次stroke)');
   const alphaCallsDamaged = ctxDamaged.calls.filter(c => c.name === 'set:globalAlpha').map(c => c.args[0]);
   assert.ok(alphaCallsDamaged.includes(0.78), '破损状态主体透明度应为 0.78');
-  assert.ok(alphaCallsDamaged.includes(0.75), '破损状态发光透明度应为 0.75');
+  assert.ok(alphaCallsDamaged.includes(0.38), '破损状态发光透明度应为 0.38');
 
   // 濒危 (critical, hp: 20/100): 6 条裂缝，stroke 共 3 + 6 = 9 次，发光线宽增大
   const ctxCritical = mockContext();
@@ -138,7 +138,7 @@ test('围墙 visual 三档受损状态体现不同裂缝数量与透明度/线�
   assert.equal(strokeCountCritical, 9, '濒危状态应有6条裂缝描边 (共9次stroke)');
   const alphaCallsCritical = ctxCritical.calls.filter(c => c.name === 'set:globalAlpha').map(c => c.args[0]);
   assert.ok(alphaCallsCritical.includes(0.55), '濒危状态主体透明度应为 0.55');
-  assert.ok(alphaCallsCritical.includes(1), '濒危状态发光透明度应为 1');
+  assert.ok(alphaCallsCritical.includes(0.5), '濒危状态发光透明度应为 0.5');
 
   // 校验发光线宽：濒危状态为 Math.max(2, 22 * 0.10) = 2.2，破损/完好为 Math.max(1, 22 * 0.07) = 1.54
   const lineWidthCallsCritical = ctxCritical.calls.filter(c => c.name === 'set:lineWidth').map(c => c.args[0]);

@@ -3,17 +3,17 @@ import assert from 'node:assert/strict';
 import { PALETTE, initPalette, onPaletteChange } from '../src/config/palette.js';
 
 const DEFAULT_PALETTE = {
-  bg: '#0d1210',
-  panel: 'rgba(13,18,16,.92)',
-  neon: '#5eff8a',
-  neonDim: '#2a4a3a',
+  bg: '#0e141d',
+  panel: 'rgba(14,20,29,.92)',
+  neon: '#45c8e0',
+  neonDim: '#223846',
   gold: '#ffd75e',
-  text: '#e6f2ea',
-  textDim: '#9fb5a8',
-  ground: '#1a2418',
-  obstacle: '#4a4a52',
-  hudPanel: '#122019',
-  boundary: '#2a4a3a',
+  text: '#e8f0f8',
+  textDim: '#9aaec0',
+  ground: '#151d28',
+  obstacle: '#3b4654',
+  hudPanel: '#101923',
+  boundary: '#223846',
 };
 
 function restoreGlobal(name, value) {

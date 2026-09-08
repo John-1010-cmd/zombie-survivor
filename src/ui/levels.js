@@ -2,7 +2,7 @@
 import { ADVENTURE_LEVELS } from '../config/adventure.js';
 import { formatTime } from '../systems/hud.js';
 import { createIconMarkup, bindIconFallback } from './icons.js';
-import { attachTooltips } from './tooltip.js';
+import { attachTooltips, hideTooltip } from './tooltip.js';
 
 export function showLevels(rootEl, meta, onStart, onBack) {
   const unlockedMax = Math.min(meta.adventure.unlocked, ADVENTURE_LEVELS.length);
@@ -29,11 +29,13 @@ export function showLevels(rootEl, meta, onStart, onBack) {
   bindIconFallback(rootEl);
   for (const card of rootEl.querySelectorAll('.level-card:not(.locked)')) {
     card.addEventListener('click', () => {
+      hideTooltip();
       rootEl.classList.add('hidden');
       onStart(card.dataset.level);
     });
   }
   rootEl.querySelector('#levels-back').addEventListener('click', () => {
+    hideTooltip();
     rootEl.classList.add('hidden');
     onBack();
   });

@@ -1,7 +1,7 @@
 // src/ui/gameover.js —— 结算覆盖层（DOM 胶水）。
 import { formatTime } from '../systems/hud.js';
 import { createIconMarkup, bindIconFallback } from './icons.js';
-import { attachTooltips } from './tooltip.js';
+import { attachTooltips, hideTooltip } from './tooltip.js';
 
 export function showGameOver(rootEl, stats, isNew, handlers) {
   const { onRestart, onMenu, onLevels } = handlers;
@@ -20,7 +20,7 @@ export function showGameOver(rootEl, stats, isNew, handlers) {
     <button id="gameover-menu" class="btn btn-dim">回主菜单</button>
   ` : `
     <h2>${cleared ? '救援成功！' : '游戏结束'}</h2>
-    ${cleared ? '<p style="color:#4d4">直升机已抵达，你活着离开了尸潮。剩余 HP：' + stats.hp + '</p>' : ''}
+    ${cleared ? '<p style="color:var(--neon)">直升机已抵达，你活着离开了尸潮。剩余 HP：' + stats.hp + '</p>' : ''}
     ${isNew ? '<p style="color:#ffd75e;font-size:24px">新纪录！</p>' : ''}
     <p>${cleared ? '用时' : '存活时间'}：${formatTime(stats.time)}</p>
     <p>击杀数：${stats.kills}</p>
@@ -30,15 +30,18 @@ export function showGameOver(rootEl, stats, isNew, handlers) {
   rootEl.classList.remove('hidden');
   bindIconFallback(rootEl);
   rootEl.querySelector('#gameover-restart').addEventListener('click', () => {
+    hideTooltip();
     rootEl.classList.add('hidden');
     onRestart();
   });
   rootEl.querySelector('#gameover-menu').addEventListener('click', () => {
+    hideTooltip();
     rootEl.classList.add('hidden');
     onMenu();
   });
   if (isAdventure) {
     rootEl.querySelector('#gameover-levels').addEventListener('click', () => {
+      hideTooltip();
       rootEl.classList.add('hidden');
       onLevels();
     });

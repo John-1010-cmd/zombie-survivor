@@ -1,5 +1,5 @@
 // src/ui/pause.js —— Esc 暂停菜单（DOM 胶水）。
-import { attachTooltips } from './tooltip.js';
+import { attachTooltips, hideTooltip } from './tooltip.js';
 
 export function showPause(rootEl, settings, handlers) {
   const { onResume, onQuit, onChange } = handlers;
@@ -29,10 +29,12 @@ export function showPause(rootEl, settings, handlers) {
   rootEl.classList.remove('hidden');
 
   rootEl.querySelector('#pause-resume').addEventListener('click', () => {
+    hideTooltip();
     rootEl.classList.add('hidden');
     onResume();
   });
   rootEl.querySelector('#pause-quit').addEventListener('click', () => {
+    hideTooltip();
     rootEl.classList.add('hidden');
     onQuit();
   });

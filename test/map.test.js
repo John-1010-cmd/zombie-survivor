@@ -7,8 +7,9 @@ import {
   generateMap, MAP_SIZE, hashId, obstacleVariant,
   ROCK_VARIANT_COUNT, RECT_VARIANT_COUNT, obstacleVisualId,
   SHOP_INTERACT_R, shopPulseState, SUPPLY_STATION_VISUAL_ID, SHOP_LABEL,
-  TERRAIN_TILE_SIZE, createTerrainRenderer,
+  TERRAIN_TILE_SIZE, createTerrainRenderer, renderShop,
 } from '../src/systems/map.js';
+import { PARTS, drawVisual } from '../src/core/visuals.js';
 
 const SHOP_POSITIONS = [[750, 750], [2250, 750], [750, 2250], [2250, 2250], [1500, 1150]];
 const SHOP_R = 46;
@@ -150,6 +151,56 @@ test('补给站交互光环只改变 alpha/scale，90px 边界仍为严格小于
   assert.ok(Math.abs(peak.alpha - 0.34) < 1e-12);
   assert.ok(Math.abs(peak.scale - 1.05) < 1e-12);
   assert.notEqual(active.scale, peak.scale);
+});
+
+test('补给站视觉 ID 已注册，drawVisual 正常分派并保持 save/restore 配对', () => {
+  assert.equal(typeof PARTS[SUPPLY_STATION_VISUAL_ID], 'function');
+  const calls = [];
+  let saves = 0;
+  let restores = 0;
+  const ctx = {
+    save() { saves++; calls.push('save'); },
+    restore() { restores++; calls.push('restore'); },
+    translate() { calls.push('translate'); },
+    beginPath() { calls.push('beginPath'); },
+    closePath() { calls.push('closePath'); },
+    moveTo() { calls.push('moveTo'); },
+    lineTo() { calls.push('lineTo'); },
+    arc() { calls.push('arc'); },
+    fill() { calls.push('fill'); },
+    stroke() { calls.push('stroke'); },
+    rect() { calls.push('rect'); },
+    fillRect() { calls.push('fillRect'); },
+    fillText() { calls.push('fillText'); },
+    fillStyle: '',
+    strokeStyle: '',
+    shadowColor: '',
+    shadowBlur: 0,
+    lineWidth: 1,
+    globalAlpha: 1,
+    font: '',
+    textAlign: '',
+  };
+
+  // 闲置状态绘制
+  const okIdle = drawVisual(ctx, SUPPLY_STATION_VISUAL_ID, 100, 100, 92, {
+    params: { active: false, alpha: 0.08, scale: 1, interactR: 90, timeSec: 1.5 },
+    phase: 1.5,
+  });
+  assert.equal(okIdle, true);
+  assert.equal(saves, restores);
+  assert.ok(calls.includes('arc'));
+  assert.ok(calls.includes('fill'));
+  assert.ok(calls.includes('stroke'));
+
+  // 激活状态与 renderShop 集成
+  saves = 0;
+  restores = 0;
+  const shop = { x: 750, y: 750, r: 46, interactR: 90 };
+  const player = { x: 750, y: 760 }; // 距离 10 < 90，active=true
+  renderShop(ctx, shop, player, 2.0);
+  assert.equal(saves, restores);
+  assert.ok(calls.includes('fillText'));
 });
 
 function fakeTileFactory(counter) {

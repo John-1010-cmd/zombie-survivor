@@ -17,9 +17,9 @@ const WALL_CRACKS = Object.freeze([
   Object.freeze([[0.00, 0.34], [0.15, 0.48], [0.10, 0.68]]),
 ]);
 const WALL_STYLES = Object.freeze({
-  intact: Object.freeze({ fillAlpha: 1, crackCount: 0, glowAlpha: 0.55 }),
-  damaged: Object.freeze({ fillAlpha: 0.78, crackCount: 3, glowAlpha: 0.75 }),
-  critical: Object.freeze({ fillAlpha: 0.55, crackCount: 6, glowAlpha: 1 }),
+  intact: Object.freeze({ fillAlpha: 1, crackCount: 0, glowAlpha: 0.28 }),
+  damaged: Object.freeze({ fillAlpha: 0.78, crackCount: 3, glowAlpha: 0.38 }),
+  critical: Object.freeze({ fillAlpha: 0.55, crackCount: 6, glowAlpha: 0.5 }),
 });
 
 export const WALL_VISUAL_ID = 'deployable.wall';
@@ -100,7 +100,7 @@ function drawWallVisual(ctx, size, params = {}, phase = 0) {
   ctx.save();
   ctx.globalAlpha = style.glowAlpha;
   ctx.shadowColor = PALETTE.neon;
-  ctx.shadowBlur = 6 + size * 0.16;
+  ctx.shadowBlur = 3 + size * 0.08;
   ctx.strokeStyle = PALETTE.neon;
   ctx.lineWidth = tier === 'critical' ? Math.max(2, size * 0.10) : Math.max(1, size * 0.07);
   traceCrenellations(ctx, size);

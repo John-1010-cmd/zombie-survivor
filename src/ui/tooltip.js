@@ -1,6 +1,121 @@
 // src/ui/tooltip.js —— DOM 覆盖层 tooltip；位置计算保持纯函数可单测。
 const VIEWPORT_GAP = 8;
 
+let activeTooltip = null;
+let activeAnchor = null;
+let checkTimer = null;
+let currentDoc = null;
+let currentWin = null;
+
+export function isElementConnected(el) {
+  if (!el) return false;
+  if (typeof el.isConnected === 'boolean') {
+    return el.isConnected;
+  }
+  return el.parentNode !== null;
+}
+
+export function isElementVisible(el) {
+  if (!el || !isElementConnected(el)) return false;
+  let curr = el;
+  while (curr) {
+    if (curr.hidden === true) return false;
+    if (curr.classList?.contains?.('hidden')) return false;
+    if (curr.style?.display === 'none' || curr.style?.visibility === 'hidden') return false;
+    curr = curr.parentNode;
+  }
+  return true;
+}
+
+function onGlobalDismiss() {
+  hideTooltip();
+}
+
+function onGlobalKeydown(e) {
+  if (e?.key === 'Escape' || e?.key === 'Esc' || e?.code === 'Escape') {
+    hideTooltip();
+  }
+}
+
+function addGlobalDismissListeners(doc) {
+  removeGlobalDismissListeners();
+  if (!doc) return;
+  currentDoc = doc;
+  currentWin = doc.defaultView || (typeof window !== 'undefined' ? window : null);
+
+  doc.addEventListener?.('pointerdown', onGlobalDismiss, true);
+  doc.addEventListener?.('wheel', onGlobalDismiss, { capture: true, passive: true });
+  doc.addEventListener?.('scroll', onGlobalDismiss, { capture: true, passive: true });
+  doc.addEventListener?.('keydown', onGlobalKeydown, true);
+
+  currentWin?.addEventListener?.('blur', onGlobalDismiss, true);
+  currentWin?.addEventListener?.('scroll', onGlobalDismiss, { capture: true, passive: true });
+}
+
+function removeGlobalDismissListeners() {
+  if (currentDoc) {
+    currentDoc.removeEventListener?.('pointerdown', onGlobalDismiss, true);
+    currentDoc.removeEventListener?.('wheel', onGlobalDismiss, { capture: true, passive: true });
+    currentDoc.removeEventListener?.('scroll', onGlobalDismiss, { capture: true, passive: true });
+    currentDoc.removeEventListener?.('keydown', onGlobalKeydown, true);
+    currentDoc = null;
+  }
+  if (currentWin) {
+    currentWin.removeEventListener?.('blur', onGlobalDismiss, true);
+    currentWin.removeEventListener?.('scroll', onGlobalDismiss, { capture: true, passive: true });
+    currentWin = null;
+  }
+}
+
+function stopTracking() {
+  if (checkTimer !== null) {
+    if (typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(checkTimer);
+    }
+    clearTimeout(checkTimer);
+    checkTimer = null;
+  }
+  removeGlobalDismissListeners();
+  activeAnchor = null;
+  activeTooltip = null;
+}
+
+function startTracking(anchor, tooltip, doc) {
+  stopTracking();
+  activeAnchor = anchor;
+  activeTooltip = tooltip;
+  addGlobalDismissListeners(doc);
+
+  const check = () => {
+    if (!activeTooltip || !activeAnchor) return;
+    if (!isElementVisible(activeAnchor)) {
+      hideTooltip();
+      return;
+    }
+    scheduleCheck();
+  };
+
+  function scheduleCheck() {
+    if (typeof requestAnimationFrame === 'function') {
+      checkTimer = requestAnimationFrame(check);
+    } else if (typeof setTimeout === 'function') {
+      const timer = setTimeout(check, 30);
+      timer.unref?.();
+      checkTimer = timer;
+    }
+  }
+
+  scheduleCheck();
+}
+
+export function hideTooltip() {
+  if (activeTooltip) {
+    activeTooltip.hide();
+  } else {
+    stopTracking();
+  }
+}
+
 export function parseTooltipAttribute(text = '') {
   const str = String(text ?? '').trim();
   if (!str) return { name: '', description: '', value: '' };
@@ -92,7 +207,12 @@ export function createTooltip(root = null) {
   element.appendChild(value);
   parent.appendChild(element);
 
+  const instance = { element: null, show() {}, hide() {}, destroy() {} };
+
   const show = (anchor, rawData) => {
+    if (activeTooltip && activeTooltip !== instance) {
+      activeTooltip.hide();
+    }
     const data = normalizeTooltipData(rawData);
     name.textContent = data.name;
     description.textContent = data.description;
@@ -108,13 +228,24 @@ export function createTooltip(root = null) {
     const p = positionTooltip(anchorRect, tooltipRect, viewport);
     element.style.left = `${p.left}px`;
     element.style.top = `${p.top}px`;
+    startTracking(anchor, instance, doc);
   };
-  const hide = () => { element.hidden = true; };
+  const hide = () => {
+    element.hidden = true;
+    if (activeTooltip === instance) {
+      stopTracking();
+    }
+  };
   const destroy = () => {
+    hide();
     if (element.parentNode?.removeChild) element.parentNode.removeChild(element);
     else element.remove?.();
   };
-  return { element, show, hide, destroy };
+  instance.element = element;
+  instance.show = show;
+  instance.hide = hide;
+  instance.destroy = destroy;
+  return instance;
 }
 
 export function bindTooltip(target, tooltip, data) {
@@ -160,10 +291,14 @@ export function attachTooltips(root) {
   }
   const originalDestroy = tooltip.destroy;
   tooltip.destroy = () => {
+    hideTooltip();
     for (const target of targets) {
       target.__tooltipCleanup?.();
     }
     originalDestroy();
+    if (root.__tooltipController === tooltip) {
+      root.__tooltipController = null;
+    }
   };
   root.__tooltipController = tooltip;
   return tooltip;

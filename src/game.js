@@ -3,7 +3,7 @@
 import { mulberry32 } from './core/rng.js';
 import { createPool } from './core/pool.js';
 import { circleHit, createSpatialHash } from './core/physics.js';
-import { createCamera, updateCamera, addShake } from './core/camera.js';
+import { createCamera, updateCamera, addShake, applyCameraTransform } from './core/camera.js';
 import { generateMap, MAP_SIZE, renderObstacle, renderShop, createTerrainRenderer } from './systems/map.js';
 import { PALETTE } from './config/palette.js';
 import { createPlayer, updatePlayer, damagePlayer } from './entities/player.js';
@@ -36,6 +36,7 @@ import { BEHAVIORS } from './systems/behaviors.js';
 import { recordKill } from './core/meta.js';
 import { renderHud } from './systems/hud.js';
 import { showShop } from './ui/shop.js';
+import { hideTooltip } from './ui/tooltip.js';
 
 const MAX_PROJECTILES = 400;
 const MAX_PARTICLES = 500;
@@ -114,6 +115,7 @@ export function createGameScene(deps) {
     render,
     viewport,
     setViewport,
+    camera,
     terrain,
     paused: false,
     player,
@@ -269,6 +271,7 @@ export function createGameScene(deps) {
     if (over) return;
     over = true;
     scene.paused = true;
+    hideTooltip();
     if (audio) audio.stop('heli');
     onGameOver({ time: scene.time, kills: scene.kills, hp: Math.max(0, Math.ceil(player.hp)), mode, ...stats });
   }
@@ -354,6 +357,7 @@ export function createGameScene(deps) {
   }
 
   function showShopPanel() {
+    hideTooltip();
     // 延迟 import 避免 DOM 模块进入纯逻辑链？——game.js 本身是 DOM 层，直接顶部 import 即可
     showShop(document.getElementById('shop'), scene, {
       onBuy: entry => {
@@ -370,6 +374,7 @@ export function createGameScene(deps) {
   }
 
   function closeShop() {
+    hideTooltip();
     shopOpen = false;
     shopLatch = true;
     document.getElementById('shop').classList.add('hidden');
@@ -561,7 +566,7 @@ export function createGameScene(deps) {
     ctx.fillRect(0, 0, W, H);
 
     ctx.save();
-    ctx.translate(-camera.x + camera.offX, -camera.y + camera.offY);
+    applyCameraTransform(ctx, camera);
     terrain.draw(ctx, { x: camera.x, y: camera.y, width: camera.viewW, height: camera.viewH });
 
     ctx.save();
