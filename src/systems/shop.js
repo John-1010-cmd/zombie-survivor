@@ -1,18 +1,18 @@
 // src/systems/shop.js —— 商店目录生成与购买逻辑。纯逻辑，无 DOM 依赖。
-// 分组目录（plan §6）：武器强化 / 更换武器 / 辅助武器 / 辅助强化 / 道具 / 风险
-import { WEAPONS, ENHANCE_STATS, STAT_MAX, SPECIAL_STATS } from '../config/bestiary/weapons.js';
+// 分组目录：武器强化 / 辅助武器 / 辅助强化 / 道具 / 风险
+import { ENHANCE_STATS, STAT_MAX, SPECIAL_STATS } from '../config/bestiary/weapons.js';
 import { ITEM_IDS } from '../config/items.js';
 import {
   ITEM_PRICES, DEPLOY_PRICES, AUX_PRICES, AUX_MAX,
   weaponPrice, itemPrice, enhancePrice, earlyTierBonus,
 } from '../config/economy.js';
-import { createWeapon, applyEnhancement } from '../entities/weapon.js';
+import { applyEnhancement } from '../entities/weapon.js';
 import { addItem } from './inventory.js';
 
 const AUX_TYPES = ['drone', 'gunner', 'sniper'];
 const TURRET_STATS = ['damage', 'fireRate', 'projectiles', 'range'];
 
-// 生成分组商品目录。game = { coins, weapon, inventory, aux, turretEnhance, wallEnhance, weaponBought }
+// 生成分组商品目录。game = { coins, weapon, inventory, aux, turretEnhance, wallEnhance }
 // opts.earlyTier === false 时移除“风险”组（冒险模式：提前进档会破坏 360s 结构，设计 §3.1）
 export function catalogFor(game, tierRemainingSec, opts = {}) {
   const w = game.weapon;
@@ -24,13 +24,6 @@ export function catalogFor(game, tierRemainingSec, opts = {}) {
     const owned = w.enhance[stat] ?? 0;
     if (owned >= STAT_MAX) continue;
     weaponEnhance.push({ kind: 'enhance', stat, price: enhancePrice(owned), owned });
-  }
-
-  // 更换武器：全部非当前武器（含手枪可回购），基价取图鉴 basePrice，随**全局换枪次数**递增
-  const weapons = [];
-  for (const id of Object.keys(WEAPONS)) {
-    if (id === w.id) continue;
-    weapons.push({ kind: 'weapon', weapon: id, price: weaponPrice(WEAPONS[id].basePrice, game.weaponBought ?? 0), refund: w.spent ?? 0 });
   }
 
   // 辅助武器：达数量上限下架；价格随**该类型**已购数量递增（各自独立计数）
@@ -69,7 +62,6 @@ export function catalogFor(game, tierRemainingSec, opts = {}) {
   // 风险：bonus 为 0 时仍列出（"无奖励"标注由 UI 负责）；冒险模式移除（设计 §3.1）
   const groups = [
     { group: '武器强化', entries: weaponEnhance },
-    { group: '更换武器', entries: weapons },
     { group: '辅助武器', entries: aux },
     { group: '辅助强化', entries: auxEnhance },
     { group: '道具', entries: items },
@@ -89,14 +81,7 @@ export function buy(game, entry) {
     if (game.weapon.enhance[entry.stat] >= STAT_MAX) return false;
     game.coins -= entry.price;
     applyEnhancement(game.weapon, entry.stat);
-    game.weapon.spent = (game.weapon.spent || 0) + entry.price; // 累计强化花费，换枪时返还
-    return true;
-  }
-  if (entry.kind === 'weapon') {
-    game.coins -= entry.price;
-    game.coins += (game.weapon.spent || 0); // 返还旧武器强化花费（武器购买价不返还）
-    game.weapon = createWeapon(entry.weapon, game.metaLevels?.[entry.weapon] ?? 0); // 按 meta 局外等级重建；新武器 spent 天然 0
-    game.weaponBought = (game.weaponBought ?? 0) + 1; // 全局换枪计数（用户裁定）
+    game.weapon.spent = (game.weapon.spent || 0) + entry.price; // 累计强化花费
     return true;
   }
   if (entry.kind === 'aux') {

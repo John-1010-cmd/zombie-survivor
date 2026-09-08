@@ -10,7 +10,7 @@ export function showMenu(rootEl, best, handlers) {
     <button id="menu-adventure" class="btn">冒险</button>
     <button id="menu-endless" class="btn">无尽</button>
     <button id="menu-bestiary" class="btn btn-dim">图鉴</button>
-    <button id="menu-upgrades" class="btn btn-dim">武器升级</button>
+    <button id="menu-upgrades" class="btn btn-dim">武器</button>
     <button id="menu-skins" class="btn btn-dim">外观</button>
     <p id="menu-best-endless">${bestLine}</p>
   `;

@@ -9,6 +9,55 @@ import { catalogFor } from '../systems/shop.js';
 import { createIconCanvas } from './icon.js';
 import { attachTooltips, hideTooltip } from './tooltip.js';
 
+export function enableHorizontalScroll(el) {
+  if (!el || typeof el.addEventListener !== 'function') return;
+  el.addEventListener('wheel', (e) => {
+    if (!e || e.deltaY === 0) return;
+    const canScrollLeft = el.scrollLeft > 0;
+    const canScrollRight = el.scrollLeft < (el.scrollWidth ?? 0) - (el.clientWidth ?? 0) - 1;
+    if ((e.deltaY < 0 && canScrollLeft) || (e.deltaY > 0 && canScrollRight)) {
+      el.scrollLeft += e.deltaY;
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+    }
+  }, { passive: false });
+
+  let isDown = false;
+  let startX = 0;
+  let scrollLeft = 0;
+  let dragged = false;
+
+  el.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    isDown = true;
+    dragged = false;
+    startX = (e.pageX ?? 0) - (el.offsetLeft ?? 0);
+    scrollLeft = el.scrollLeft ?? 0;
+  });
+
+  el.addEventListener('pointermove', (e) => {
+    if (!isDown) return;
+    const x = (e.pageX ?? 0) - (el.offsetLeft ?? 0);
+    const walk = x - startX;
+    if (Math.abs(walk) > 4) {
+      dragged = true;
+      el.scrollLeft = scrollLeft - walk;
+    }
+  });
+
+  const stopDrag = () => { isDown = false; };
+  el.addEventListener('pointerup', stopDrag);
+  el.addEventListener('pointercancel', stopDrag);
+  el.addEventListener('pointerleave', stopDrag);
+
+  el.addEventListener('click', (e) => {
+    if (dragged) {
+      if (typeof e.stopPropagation === 'function') e.stopPropagation();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
+      dragged = false;
+    }
+  }, true);
+}
+
 // 条目 → {title, desc, price, icon, value}（earlyTier 无 price）
 export function entryView(entry, game) {
   const max = STAT_MAX;
@@ -16,13 +65,6 @@ export function entryView(entry, game) {
     return {
       title: STAT_LABEL[entry.stat], desc: `当前 ${entry.owned}/${max} 级`, price: entry.price,
       icon: `icon.enhance.${entry.stat}`, value: `等级 ${entry.owned}/${max}`,
-    };
-  }
-  if (entry.kind === 'weapon') {
-    const refundNote = (entry.refund ?? 0) > 0 ? `（返还强化 ${entry.refund} 银币）` : '';
-    return {
-      title: WEAPONS[entry.weapon].name, desc: `更换主武器（增强清零）${refundNote}`, price: entry.price,
-      icon: WEAPONS[entry.weapon].icon, value: `${entry.price} 银币`,
     };
   }
   if (entry.kind === 'aux') {
@@ -135,6 +177,7 @@ export function showShop(rootEl, game, handlers, opts = {}) {
         const list = document.createElement('div');
         list.className = 'shop-list';
         for (const entry of t.entries) list.appendChild(buildEntryEl(entry, game, handlers));
+        enableHorizontalScroll(list);
         sub.appendChild(list);
         row.appendChild(sub);
       }
@@ -142,6 +185,7 @@ export function showShop(rootEl, game, handlers, opts = {}) {
       const list = document.createElement('div');
       list.className = 'shop-list';
       for (const entry of g.entries) list.appendChild(buildEntryEl(entry, game, handlers));
+      enableHorizontalScroll(list);
       row.appendChild(list);
     }
     wrap.appendChild(row);

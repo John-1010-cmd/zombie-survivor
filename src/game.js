@@ -33,7 +33,7 @@ import {
 import { MONSTERS } from './config/bestiary/monsters.js';
 import { renderZombie, renderProjectiles, drawPlayer } from './entities/render.js';
 import { BEHAVIORS } from './systems/behaviors.js';
-import { recordKill } from './core/meta.js';
+import { recordKill, selectedWeapon } from './core/meta.js';
 import { renderHud } from './systems/hud.js';
 import { showShop } from './ui/shop.js';
 import { hideTooltip } from './ui/tooltip.js';
@@ -110,6 +110,9 @@ export function createGameScene(deps) {
     camera.setViewport(viewport.width, viewport.height);
   }
 
+  const activeWeaponId = selectedWeapon(meta);
+  const activeWeaponLevel = meta?.weaponLevels?.[activeWeaponId] ?? 0;
+
   const scene = {
     update,
     render,
@@ -123,9 +126,9 @@ export function createGameScene(deps) {
     duration: isAdventure ? ADVENTURE_DURATION : (modeCfg.duration || 0),
     levelId: isAdventure ? levelId : null,
     levelIndex: scalingCtx.level,
-    // 武器必须经 scene.weapon 引用：换枪会重绑 game.weapon（buy）
-    weapon: createWeapon('pistol', meta ? (meta.weaponLevels.pistol ?? 0) : 0),
-    metaLevels: meta ? meta.weaponLevels : {}, // shop.js 换枪时按 meta 局外等级重建
+    // 玩家主武器开局读取 meta 选中的出战武器与局外等级
+    weapon: createWeapon(activeWeaponId, activeWeaponLevel),
+    metaLevels: meta ? meta.weaponLevels : {},
     zombies: [],
     coins: 0,
     inventory: createInventory(),

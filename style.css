@@ -92,7 +92,7 @@ html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); overfl
 .pause-row input[type="checkbox"] { accent-color: var(--neon); }
 .pause-buttons { display: flex; gap: 24px; margin-top: 8px; }
 
-/* 商店（ui/shop.js）—— 迭代 03 分组布局 */
+/* 商店（ui/shop.js）—— 单行横向滚动 */
 .currency-icon { width: 24px; height: 24px; display: inline-block; vertical-align: middle; object-fit: contain; margin: 0 4px; }
 #shop { justify-content: flex-start; padding-top: 24px; overflow-y: auto; }
 .shop-head { display: flex; flex-direction: column; align-items: center; }
@@ -101,16 +101,45 @@ html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); overfl
 .build { margin: 8px 0 0; text-align: center; color: var(--text-dim); }
 .build-head { font-size: 16px; color: var(--text); }
 .build-stat { font-size: 12px; }
-.shop-groups { display: flex; flex-direction: column; gap: 16px; max-width: 1064px; }
-.shop-row { display: flex; flex-direction: column; }
+.shop-groups { display: flex; flex-direction: column; gap: 14px; width: 100%; max-width: 1064px; box-sizing: border-box; padding: 0 12px; }
+.shop-row { display: flex; flex-direction: column; min-width: 0; }
 .shop-row.aux-unowned { opacity: .45; }
 .shop-row.aux-unowned .shop-row-title { color: var(--text-dim); border-color: var(--neon-dim); }
-.shop-row-title { margin: 0 0 8px; font-size: 14px; color: var(--neon);
+.shop-row-title { margin: 0 0 6px; font-size: 14px; color: var(--neon);
   border-left: 4px solid var(--neon); padding-left: 8px; }
-.shop-list { display: flex; flex-wrap: wrap; gap: 8px; }
-.shop-item { width: 168px; padding: 8px 8px; }
-.shop-item .ui-icon { width: 48px; height: 48px; display: block; margin: 0 auto 4px; }
-.shop-item .shop-price { color: var(--gold); font-weight: bold; }
+.shop-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 4px 2px 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  user-select: none;
+}
+.shop-list::-webkit-scrollbar {
+  display: none;
+}
+.shop-list:active {
+  cursor: grabbing;
+}
+.shop-item {
+  flex: 0 0 140px;
+  width: 140px;
+  padding: 8px 6px;
+  text-align: center;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+.shop-item .ui-icon { width: 40px; height: 40px; display: block; margin: 0 auto 4px; flex-shrink: 0; }
+.shop-item h4 { font-size: 13px; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.shop-item p { font-size: 11px; margin: 2px 0; line-height: 1.25; }
+.shop-item .shop-price { color: var(--gold); font-weight: bold; font-size: 12px; margin-top: 4px; }
 
 /* 结算 */
 #gameover h2 { color: var(--gold); margin-bottom: 8px; }
@@ -125,34 +154,150 @@ html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); overfl
   max-width: 1064px; }
 .level-card { width: 192px; padding: 16px; }
 
-/* 武器升级（ui/upgrades.js） */
-.upgrade-list { display: flex; flex-direction: column; gap: 8px; width: 400px; max-width: 100%; }
-.upgrade-row { display: flex; align-items: center; gap: 16px; text-align: left; cursor: default; }
-.upgrade-row:hover { border-color: var(--neon-dim); box-shadow: none; }
-.upgrade-row .ui-icon { width: 48px; height: 48px; flex: 0 0 auto; margin: 0; }
-.upgrade-row .currency-icon { flex: 0 0 auto; }
-.upgrade-row h4 { flex: 1; }
-.upgrade-row h4 span { color: var(--text-dim); font-weight: normal; font-size: 12px; }
-.upgrade-row p { margin: 0; }
-.upgrade-buy { padding: 8px 16px; white-space: nowrap; }
+/* 武器（ui/upgrades.js）—— 单行横向滚动与卡片出战高亮 */
+#upgrades { justify-content: flex-start; padding-top: 24px; overflow-y: auto; }
+.upgrade-balance { margin: 0 0 8px; font-size: 16px; color: var(--gold); }
+.upgrade-list {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 12px;
+  width: 100%;
+  max-width: 1064px;
+  padding: 8px 12px 16px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: grab;
+  user-select: none;
+}
+.upgrade-list::-webkit-scrollbar {
+  display: none;
+}
+.upgrade-list:active {
+  cursor: grabbing;
+}
+.upgrade-card {
+  flex: 0 0 156px;
+  width: 156px;
+  padding: 12px 8px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: border-color .15s, box-shadow .15s;
+}
+.upgrade-card:hover {
+  border-color: var(--neon);
+  box-shadow: 0 0 12px rgba(69,200,224,.35);
+}
+.upgrade-card.selected {
+  border-color: var(--neon);
+  box-shadow: 0 0 16px rgba(69,200,224,.6), inset 0 0 12px rgba(69,200,224,.15);
+}
+.upgrade-card.locked {
+  opacity: .55;
+  cursor: default;
+}
+.upgrade-card.locked:hover {
+  border-color: var(--neon-dim);
+  box-shadow: none;
+}
+.upgrade-card .ui-icon {
+  width: 48px;
+  height: 48px;
+  display: block;
+  margin: 0 auto 6px;
+  flex-shrink: 0;
+}
+.upgrade-card h4 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--gold);
+}
+.upgrade-card h4 span {
+  display: block;
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.upgrade-damage {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 4px 0 10px;
+}
+.upgrade-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+.upgrade-actions .btn {
+  padding: 6px 8px;
+  font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.btn-select.active {
+  background: var(--neon-dim);
+  color: #fff;
+  border-color: var(--neon);
+  box-shadow: 0 0 8px rgba(69,200,224,.4);
+  cursor: default;
+}
+.upgrade-buy, .upgrade-unlock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.upgrade-row .currency-icon { flex: 0 0 auto; margin: 0 2px 0 0; }
 
 /* 图鉴（ui/bestiary.js） */
+#bestiary { justify-content: flex-start; padding-top: 16px; overflow-y: auto; }
 .bestiary-tabs { display: flex; gap: 8px; }
 .bestiary-tabs .btn.active { box-shadow: 0 0 12px rgba(69,200,224,.4); color: #d8f6fc; }
-.bestiary-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
-  max-width: 1064px; }
-.bestiary-card { width: 200px; cursor: default; }
+.bestiary-row,
+.bestiary-grid {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 12px;
+  width: min(960px, 94vw);
+  max-width: 100%;
+  padding: 8px 4px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.bestiary-row::-webkit-scrollbar,
+.bestiary-grid::-webkit-scrollbar {
+  display: none;
+}
+.bestiary-card {
+  flex: 0 0 170px;
+  width: 170px;
+  box-sizing: border-box;
+  cursor: default;
+  padding: 8px 10px;
+}
 .bestiary-card:hover { border-color: var(--neon-dim); box-shadow: none; }
 .bestiary-visual,
 .bestiary-visual-slot,
-.bestiary-lock { width: 48px; height: 48px; margin: 0 auto 8px; }
+.bestiary-lock { width: 44px; height: 44px; margin: 0 auto 6px; }
 .bestiary-visual { display: block; }
 .bestiary-visual-slot,
 .bestiary-lock { display: grid; place-items: center;
   border: 1px solid var(--neon-dim); border-radius: var(--radius); }
 .bestiary-lock { box-sizing: border-box; color: var(--text-dim); font-size: 24px;
   background: var(--bg); }
-.bestiary-note { font-size: 12px; }
+.bestiary-note { font-size: 12px; margin: 4px 0; }
 
 /* 开发者菜单（ui/dev.js）—— ` 键开关 */
 #dev h2 { color: var(--neon); margin-bottom: 8px; }
@@ -165,30 +310,58 @@ html, body { margin: 0; width: 100%; height: 100%; background: var(--bg); overfl
   border-radius: 4px; font: 12px/1.4 monospace; pointer-events: none; }
 
 /* 外观（ui/skins.js） */
-#skins { justify-content: flex-start; padding-top: 24px; overflow-y: auto; }
+#skins { justify-content: flex-start; padding-top: 16px; overflow-y: auto; }
 #menu #menu-skins { display: block; width: 280px; margin: 8px 0; font-size: 16px; }
-.skin-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px;
-  width: min(900px, 100%); align-items: start; }
-.skin-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.skin-card { width: 168px; min-height: 72px; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 4px; color: var(--text); }
-.skin-card strong { color: var(--gold); font-size: 14px; }
-.skin-card span { color: var(--text-dim); font-size: 12px; }
-.skin-card.selected { border-color: var(--neon); box-shadow: 0 0 12px rgba(69,200,224,.35); }
-.skin-detail { cursor: default; min-height: 360px; }
-.skin-detail:hover { border-color: var(--neon-dim); box-shadow: none; }
-.skin-portrait { width: 192px; height: 192px; margin: 0 auto 12px; display: flex;
-  align-items: center; justify-content: center; border: 1px solid var(--neon-dim);
-  border-radius: var(--radius); background: var(--panel); overflow: hidden; }
-.skin-portrait canvas { width: 192px; height: 192px; image-rendering: auto; }
-.skin-detail h3 { margin: 0 0 8px; color: var(--gold); }
-.skin-detail p { margin: 4px 0; }
-#skin-price { color: var(--gold); font-weight: bold; }
-.skin-currency-icon { display: inline-flex; width: 24px; height: 24px; vertical-align: middle;
-  align-items: center; justify-content: center; margin-right: 4px; }
-.skin-currency-icon canvas { width: 24px; height: 24px; }
-.skin-message { min-height: 18px; color: var(--gold) !important; }
-@media (max-width: 720px) {
-  .skin-layout { grid-template-columns: 1fr; }
-  .skin-detail { order: -1; width: min(320px, 100%); box-sizing: border-box; }
+.skin-row,
+.skin-list {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 12px;
+  width: min(900px, 94vw);
+  max-width: 100%;
+  padding: 8px 4px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
+.skin-row::-webkit-scrollbar,
+.skin-list::-webkit-scrollbar {
+  display: none;
+}
+.skin-card {
+  flex: 0 0 160px;
+  width: 160px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 8px;
+  color: var(--text);
+  font-family: inherit;
+}
+.skin-card strong,
+.skin-name { color: var(--gold); font-size: 14px; }
+.skin-card span,
+.skin-status { color: var(--text-dim); font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+.skin-card.selected { border-color: var(--neon); box-shadow: 0 0 12px rgba(69,200,224,.35); }
+.skin-portrait {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--neon-dim);
+  border-radius: var(--radius);
+  background: var(--panel);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.skin-portrait canvas { width: 64px; height: 64px; image-rendering: auto; }
+.skin-currency-icon { display: inline-flex; width: 20px; height: 20px; vertical-align: middle;
+  align-items: center; justify-content: center; margin-right: 2px; }
+.skin-currency-icon canvas { width: 20px; height: 20px; }
+.skin-message { min-height: 18px; color: var(--gold) !important; margin: 4px 0; }

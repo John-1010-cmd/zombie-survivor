@@ -40,3 +40,18 @@ export function earlyTierBonus(remainingSec) {
 export function weaponUpgradePrice(curLevel) {
   return round5(40 * Math.pow(1.5, curLevel));
 }
+
+// 武器金币解锁价格（局外货币）
+export const WEAPON_UNLOCK_PRICES = {
+  pistol: 0,
+  rifle: 800,
+  mg: 1200,
+  rocket: 2000,
+  grenade: 2500,
+  tesla: 3000,
+  sniperRifle: 4000,
+};
+
+export function weaponUnlockPrice(id) {
+  return WEAPON_UNLOCK_PRICES[id] ?? 0;
+}

@@ -51,6 +51,16 @@ function mountVisualSlots(rootEl, slots) {
   }
 }
 
+function enableHorizontalWheel(container) {
+  if (!container?.addEventListener) return;
+  container.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && container.scrollWidth > container.clientWidth) {
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+}
+
 export function showBestiary(rootEl, meta, onBack) {
   const render = tab => {
     hideTooltip();
@@ -68,7 +78,7 @@ export function showBestiary(rootEl, meta, onBack) {
         <button id="bestiary-tab-monsters" class="btn${tab === 'monsters' ? ' active' : ' btn-dim'}">怪物</button>
         <button id="bestiary-tab-weapons" class="btn${tab === 'weapons' ? ' active' : ' btn-dim'}">武器</button>
       </div>
-      <div class="bestiary-grid">
+      <div class="bestiary-row">
         ${tab === 'monsters' ? monsterCards.map(v => v.unlocked ? `
           <div class="card bestiary-card">
             ${visualSlot(`monster-${v.id}`, v.id, { visual: v.visual })}
@@ -92,6 +102,7 @@ export function showBestiary(rootEl, meta, onBack) {
       <button id="bestiary-back" class="btn btn-dim">返回</button>
     `;
     mountVisualSlots(rootEl, slots);
+    enableHorizontalWheel(rootEl.querySelector('.bestiary-row'));
     rootEl.querySelector('#bestiary-tab-monsters').addEventListener('click', () => render('monsters'));
     rootEl.querySelector('#bestiary-tab-weapons').addEventListener('click', () => render('weapons'));
     rootEl.querySelector('#bestiary-back').addEventListener('click', () => {

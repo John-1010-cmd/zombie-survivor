@@ -83,14 +83,14 @@ test('showShop：分组链路渲染图标，所有 data-visual-id 都来自 ASSE
 
   assert.ok(root._kids.length >= 3, `面板子节点 ${root._kids.length} 应 ≥3`);
   const groupsWrap = root._kids[2];
-  assert.ok(groupsWrap._kids.length >= 5, `分组行 ${groupsWrap._kids.length} 应 ≥5`);
+  assert.ok(groupsWrap._kids.length >= 4, `分组行 ${groupsWrap._kids.length} 应 ≥4`);
 
   const html = collectHtml(root);
   const ids = [...html.matchAll(/data-visual-id=["']([^"']+)["']/g)].map(m => m[1]);
-  assert.ok(ids.length >= 6, `商店至少应渲染 6 个图标节点，实际 ${ids.length}`);
+  assert.ok(ids.length >= 5, `商店至少应渲染 5 个图标节点，实际 ${ids.length}`);
   for (const id of ids) assert.ok(ASSET_BY_ID[id], `${id} 不在 ASSET_BY_ID`);
   for (const id of [
-    'icon.currency.silver', 'icon.weapon.pistol', 'icon.weapon.rifle',
+    'icon.currency.silver', 'icon.weapon.pistol',
     'icon.aux.drone', 'icon.enhance.damage', 'icon.item.medkit',
   ]) {
     assert.ok(ASSET_BY_ID[id], `${id} 必须先登记 manifest`);

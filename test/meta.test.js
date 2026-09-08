@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   META_VERSION, defaultMeta, loadMeta, saveMeta,
   addGold, spendGold, weaponLevel, recordKill, recordAdventureResult,
+  isWeaponUnlocked, unlockWeapon, selectWeapon, selectedWeapon,
 } from '../src/core/meta.js';
 
 function setFakeStorage(raw) {
@@ -18,11 +19,11 @@ function clearFakeStorage() {
   delete globalThis.localStorage;
 }
 
-test('defaultMeta 结构定稿（version 2 + 默认皮肤）', () => {
+test('defaultMeta 结构定稿（version 3 + 默认皮肤 + 默认武器）', () => {
   clearFakeStorage();
-  assert.equal(META_VERSION, 2);
+  assert.equal(META_VERSION, 3);
   assert.deepEqual(defaultMeta(), {
-    version: 2,
+    version: 3,
     gold: 0,
     weaponLevels: {},
     adventure: { unlocked: 1, firstClear: {}, bestTimes: {} },
@@ -30,6 +31,10 @@ test('defaultMeta 结构定稿（version 2 + 默认皮肤）', () => {
     skins: {
       owned: ['wastelandAdventurer'],
       selected: 'wastelandAdventurer',
+    },
+    weapons: {
+      owned: ['pistol'],
+      selected: 'pistol',
     },
   });
 });
@@ -99,7 +104,7 @@ test('读写往返；坏 JSON / 版本不符 / 字段类型错误逐项回退、
     zs_meta: JSON.stringify({ version: 0, gold: 300, weaponLevels: { pistol: 99 }, adventure: { unlocked: 2 } }),
   });
   const loaded = loadMeta();
-  assert.equal(loaded.version, 2);
+  assert.equal(loaded.version, 3);
   assert.equal(loaded.gold, 300);
   assert.equal(loaded.weaponLevels.pistol, undefined);
   assert.equal(loaded.adventure.unlocked, 2);
@@ -107,10 +112,14 @@ test('读写往返；坏 JSON / 版本不符 / 字段类型错误逐项回退、
     owned: ['wastelandAdventurer'],
     selected: 'wastelandAdventurer',
   });
+  assert.deepEqual(loaded.weapons, {
+    owned: ['pistol'],
+    selected: 'pistol',
+  });
   clearFakeStorage();
 });
 
-test('version 1 或缺失 skins 自动迁移，保留合法局外字段', () => {
+test('version 1 或缺失 skins/weapons 自动迁移，保留合法局外字段', () => {
   setFakeStorage({
     zs_meta: JSON.stringify({
       version: 1,
@@ -121,7 +130,7 @@ test('version 1 或缺失 skins 自动迁移，保留合法局外字段', () => 
     }),
   });
   const loaded = loadMeta();
-  assert.equal(loaded.version, 2);
+  assert.equal(loaded.version, 3);
   assert.equal(loaded.gold, 321);
   assert.equal(loaded.weaponLevels.pistol, 4);
   assert.equal(loaded.adventure.unlocked, 2);
@@ -129,6 +138,29 @@ test('version 1 或缺失 skins 自动迁移，保留合法局外字段', () => 
   assert.deepEqual(loaded.skins, {
     owned: ['wastelandAdventurer'],
     selected: 'wastelandAdventurer',
+  });
+  assert.deepEqual(loaded.weapons, {
+    owned: ['pistol'],
+    selected: 'pistol',
+  });
+  clearFakeStorage();
+});
+
+test('version 2 迁移至 version 3：已有等级 > 0 的武器自动保留为 owned', () => {
+  setFakeStorage({
+    zs_meta: JSON.stringify({
+      version: 2,
+      gold: 500,
+      weaponLevels: { pistol: 3, rifle: 2, mg: 0 },
+      skins: { owned: ['wastelandAdventurer'], selected: 'wastelandAdventurer' },
+    }),
+  });
+  const loaded = loadMeta();
+  assert.equal(loaded.version, 3);
+  assert.equal(loaded.gold, 500);
+  assert.deepEqual(loaded.weapons, {
+    owned: ['pistol', 'rifle'],
+    selected: 'pistol',
   });
   clearFakeStorage();
 });
@@ -172,4 +204,64 @@ test('皮肤字段读写往返', () => {
     selected: 'neonMercenary',
   });
   clearFakeStorage();
+});
+
+test('weapons owned 只保留注册表武器 ID 且 selected 不属于 owned 时回退默认', () => {
+  setFakeStorage({
+    zs_meta: JSON.stringify({
+      version: 3,
+      weapons: { owned: ['rifle', 'invalidWeapon', 'rifle', 99], selected: 'invalidWeapon' },
+    }),
+  });
+  assert.deepEqual(loadMeta().weapons, {
+    owned: ['pistol', 'rifle'],
+    selected: 'pistol',
+  });
+  clearFakeStorage();
+});
+
+test('合法 selected 必须属于 owned 时保留选中武器', () => {
+  setFakeStorage({
+    zs_meta: JSON.stringify({
+      version: 3,
+      weapons: { owned: ['rifle'], selected: 'rifle' },
+    }),
+  });
+  assert.deepEqual(loadMeta().weapons, {
+    owned: ['pistol', 'rifle'],
+    selected: 'rifle',
+  });
+  clearFakeStorage();
+});
+
+test('武器解锁与出战：isWeaponUnlocked / unlockWeapon / selectWeapon / selectedWeapon', () => {
+  const m = defaultMeta();
+  assert.equal(isWeaponUnlocked(m, 'pistol'), true);
+  assert.equal(isWeaponUnlocked(m, 'rifle'), false);
+  assert.equal(selectedWeapon(m), 'pistol');
+
+  // 未解锁无法选择出战
+  assert.equal(selectWeapon(m, 'rifle'), false);
+  assert.equal(selectedWeapon(m), 'pistol');
+
+  // 金币不足解锁失败
+  addGold(m, 500);
+  assert.equal(unlockWeapon(m, 'rifle', 800), false);
+  assert.equal(isWeaponUnlocked(m, 'rifle'), false);
+  assert.equal(m.gold, 500);
+
+  // 金币足够解锁成功并扣款
+  addGold(m, 500); // 现有 1000
+  assert.equal(unlockWeapon(m, 'rifle', 800), true);
+  assert.equal(m.gold, 200);
+  assert.equal(isWeaponUnlocked(m, 'rifle'), true);
+
+  // 重复解锁直接返回 true 且不重复扣款
+  assert.equal(unlockWeapon(m, 'rifle', 800), true);
+  assert.equal(m.gold, 200);
+
+  // 解锁后可以选择出战
+  assert.equal(selectWeapon(m, 'rifle'), true);
+  assert.equal(selectedWeapon(m), 'rifle');
+  assert.equal(m.weapons.selected, 'rifle');
 });

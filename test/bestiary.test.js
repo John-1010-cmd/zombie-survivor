@@ -343,6 +343,34 @@ test('图鉴通过 getVisualCanvas 使用 24/32/48/64 档位，卡片不再生�
   }
 });
 
+test('图鉴卡片采用单行横滚容器 .bestiary-row，保留怪物与武器卡片结构', () => {
+  const { root, documentMock, handlers } = mockBestiaryDom();
+  const previousDocument = globalThis.document;
+  globalThis.document = documentMock;
+  clearCaches();
+  try {
+    showBestiary(root, {
+      bestiaryKills: { normal: 3 },
+      weaponLevels: { pistol: 2 },
+    }, () => {});
+
+    // 断言单行容器类名
+    assert.match(root.innerHTML, /class="[^"]*bestiary-row[^"]*"/, '必须使用单行横滚容器 .bestiary-row');
+    // 怪物卡片与结构保留
+    assert.match(root.innerHTML, /class="card bestiary-card"/);
+    assert.match(root.innerHTML, /累计击杀 3/);
+    assert.match(root.innerHTML, /<h4>\?\?\?<\/h4>/, '未解锁怪物显示 ???');
+
+    // 切换到武器 tab
+    handlers.get('#bestiary-tab-weapons')();
+    assert.match(root.innerHTML, /class="[^"]*bestiary-row[^"]*"/, '武器 tab 也使用单行横滚容器 .bestiary-row');
+    assert.match(root.innerHTML, /局外等级 Lv 2\/10/);
+  } finally {
+    clearCaches();
+    globalThis.document = previousDocument;
+  }
+});
+
 test('新增仅复用已注册部件的怪物配置时，图鉴与游戏内渲染无需新增分支', () => {
   const extension = {
     id: 'scout',

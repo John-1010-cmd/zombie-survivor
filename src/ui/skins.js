@@ -3,7 +3,7 @@ import { SKINS } from '../config/skins.js';
 import { spendGold } from '../core/meta.js';
 import { ASSET_BY_ID } from '../config/assets.js';
 import { getVisualCanvas } from '../core/visuals.js';
-import { hideTooltip } from './tooltip.js';
+import { createTooltip, bindTooltip, hideTooltip } from './tooltip.js';
 
 const DEFAULT_SKIN_ID = 'wastelandAdventurer';
 const GOLD_ICON_ID = 'icon.currency.gold';
@@ -47,25 +47,44 @@ export function applySkinAction(meta, skinId) {
 
 function mountVisual(host, id, size, options = {}) {
   try {
-    host.replaceChildren(getVisualCanvas(id, size, options));
+    const canvas = getVisualCanvas(id, size, options);
+    if (typeof host.replaceChildren === 'function') {
+      host.replaceChildren(canvas);
+    } else {
+      host.innerHTML = '';
+      host.appendChild(canvas);
+    }
   } catch {
     host.textContent = id === GOLD_ICON_ID ? '金币' : '视觉不可用';
   }
 }
 
-function mountPortrait(host, skin) {
+function mountPortrait(host, skin, size = 64) {
+  if (!host) return;
   try {
-    host.replaceChildren(getVisualCanvas(skin.portrait, 192, {
+    const canvas = getVisualCanvas(skin.portrait, size, {
       frame: { direction: 'down', index: 0 },
-    }));
+    });
+    if (typeof host.replaceChildren === 'function') {
+      host.replaceChildren(canvas);
+    } else {
+      host.innerHTML = '';
+      host.appendChild(canvas);
+    }
     return;
   } catch {
     const fallback = SKINS[DEFAULT_SKIN_ID];
     if (skin.id !== fallback.id) {
       try {
-        host.replaceChildren(getVisualCanvas(fallback.portrait, 192, {
+        const fallbackCanvas = getVisualCanvas(fallback.portrait, size, {
           frame: { direction: 'down', index: 0 },
-        }));
+        });
+        if (typeof host.replaceChildren === 'function') {
+          host.replaceChildren(fallbackCanvas);
+        } else {
+          host.innerHTML = '';
+          host.appendChild(fallbackCanvas);
+        }
         return;
       } catch {
         host.textContent = fallback.name;
@@ -81,56 +100,53 @@ function currencyMarkup(amount) {
   return `<span class="skin-currency-icon" data-icon="${GOLD_ICON_ID}" aria-hidden="true"></span>${label}`;
 }
 
+function enableHorizontalWheel(container) {
+  if (!container?.addEventListener) return;
+  container.addEventListener('wheel', e => {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && container.scrollWidth > container.clientWidth) {
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
+}
+
 export function showSkins(rootEl, meta, onBack, onSave = () => {}) {
-  let previewId = SKINS[meta?.skins?.selected] ? meta.skins.selected : DEFAULT_SKIN_ID;
   let message = '';
+  let tooltip = null;
 
   const render = () => {
     hideTooltip();
-    const current = SKINS[previewId] || SKINS[DEFAULT_SKIN_ID];
-    const currentView = skinView(current, meta);
+    tooltip?.destroy?.();
+    tooltip = createTooltip(rootEl.ownerDocument?.body || rootEl);
+
     rootEl.innerHTML = `
       <h2>外观</h2>
       <p id="skins-balance">当前余额：<span class="skin-currency-icon" data-icon="${GOLD_ICON_ID}" aria-hidden="true"></span>${meta.gold} 金币</p>
-      <div class="skin-layout">
-        <div class="skin-list">
-          ${Object.values(SKINS).map(skin => {
-            const view = skinView(skin, meta);
-            return `
-              <button type="button" class="card skin-card${view.selected ? ' selected' : ''}${view.owned ? '' : ' locked'}" data-skin-id="${view.id}">
-                <strong>${view.name}</strong>
-                <span>${view.owned ? (view.selected ? '使用中' : '已拥有') : currencyMarkup(view.price.amount)}</span>
-              </button>`;
-          }).join('')}
-        </div>
-        <div class="card skin-detail">
-          <div id="skin-portrait" class="skin-portrait" aria-label="${current.name}立绘"></div>
-          <h3 id="skin-name">${current.name}</h3>
-          <p id="skin-description">${current.description}</p>
-          <p id="skin-price">${currencyMarkup(current.price.amount)}</p>
-          <p id="skins-message" class="skin-message">${message}</p>
-          <button id="skin-action" class="btn"${currentView.disabled ? ' disabled' : ''}>${currentView.action}</button>
-        </div>
+      <div class="skin-row skin-list">
+        ${Object.values(SKINS).map(skin => {
+          const view = skinView(skin, meta);
+          return `
+            <button type="button" class="card skin-card${view.selected ? ' selected' : ''}${view.owned ? '' : ' locked'}" data-skin-id="${view.id}" data-tooltip-name="${view.name}" data-tooltip-description="${view.description}">
+              <div class="skin-portrait" data-portrait-skin="${view.id}" aria-label="${view.name}立绘"></div>
+              <strong class="skin-name">${view.name}</strong>
+              <span class="skin-status">${view.owned ? (view.selected ? '使用中' : '已拥有') : currencyMarkup(view.price.amount)}</span>
+            </button>`;
+        }).join('')}
       </div>
-      <button id="skins-back" class="btn btn-dim">取消</button>
+      <p id="skins-message" class="skin-message">${message}</p>
+      <button id="skins-back" class="btn btn-dim">返回</button>
     `;
 
-    mountPortrait(rootEl.querySelector('#skin-portrait'), current);
-    for (const icon of rootEl.querySelectorAll('.skin-currency-icon'))
-      mountVisual(icon, icon.dataset.icon, 24);
-
     for (const card of rootEl.querySelectorAll('.skin-card')) {
+      const skinId = card.dataset.skinId;
+      const skin = SKINS[skinId];
+      if (skin) {
+        mountPortrait(card.querySelector('.skin-portrait'), skin, 64);
+        bindTooltip(card, tooltip, { name: skin.name, description: skin.description });
+      }
       card.addEventListener('click', () => {
-        previewId = card.dataset.skinId;
-        message = '';
-        render();
-      });
-    }
-
-    const action = rootEl.querySelector('#skin-action');
-    if (!currentView.disabled) {
-      action.addEventListener('click', () => {
-        const result = applySkinAction(meta, previewId);
+        if (meta?.skins?.selected === skinId) return;
+        const result = applySkinAction(meta, skinId);
         if (!result.ok) {
           message = result.reason === 'insufficient-gold'
             ? '购买失败：金币不足'
@@ -144,8 +160,14 @@ export function showSkins(rootEl, meta, onBack, onSave = () => {}) {
       });
     }
 
+    for (const icon of rootEl.querySelectorAll('.skin-currency-icon'))
+      mountVisual(icon, icon.dataset.icon, 20);
+
+    enableHorizontalWheel(rootEl.querySelector('.skin-row'));
+
     rootEl.querySelector('#skins-back').addEventListener('click', () => {
       hideTooltip();
+      tooltip?.destroy?.();
       rootEl.classList.add('hidden');
       onBack();
     });
